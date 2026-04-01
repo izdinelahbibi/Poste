@@ -1,0 +1,244 @@
+.login-container {
+  max-width: 450px;
+  margin: 0;
+  border-radius: 12px;
+  margin-right: 160px;
+}
+
+.login-container h2 {
+  text-align: left;
+  color: #003366;
+  margin-bottom: 1.5rem;
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.login-container h2::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 3px;
+  background: #ff6600;
+  margin-top: 10px;
+  border-radius: 2px;
+}
+
+/* ✅ Bloc erreurs */
+.error-box {
+  margin-bottom: 15px;
+}
+
+.error-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d8000c;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.error-icon {
+
+  color: rgb(255, 255, 255);
+  border-radius: 4px;
+  font-size: 14px;
+  color: #ddd;
+  padding: 2px 3px;
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+  margin-bottom: 5px;
+}
+
+.form-group input {
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  background-color: #fafafa;
+}
+
+/* Bordure rouge si erreur */
+.input-error {
+  border-color: #d8000c;
+  background-color: #fff5f5;
+}
+
+/* Boutons */
+.certificate-btn,
+.login-btn {
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.certificate-btn {
+  background-color: #f5f5f5;
+  border: 2px solid #ddd;
+}
+
+.login-btn {
+  background-color: #f2c230;
+  color: white;
+}
+
+/* Liens */
+.login-links {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.login-links a {
+  color: #003366;
+  text-decoration: none;
+}
+
+.login-links span {
+  color: #ccc;
+}
+/* Styles pour le formulaire de vérification de carte */
+.card-verification-form {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.card-verification-form h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.verification-message {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  border-radius: 4px;
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-group.half {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.3s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.form-group input.input-error {
+  border-color: #dc3545;
+}
+
+.error-message {
+  display: block;
+  color: #dc3545;
+  font-size: 0.8rem;
+  margin-top: 5px;
+}
+
+.card-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.cancel-btn {
+  flex: 1;
+  padding: 10px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.cancel-btn:hover {
+  background-color: #5a6268;
+}
+
+.verify-btn {
+  flex: 1;
+  padding: 10px;
+  background-color: #F2C230;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.verify-btn:hover {
+  background-color: #F2C230;
+}
+
+/* Animation d'apparition */
+.card-verification-form {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

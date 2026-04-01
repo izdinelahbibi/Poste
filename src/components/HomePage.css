@@ -1,0 +1,133 @@
+/* HomePage.css */
+.homepage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+  padding: 3rem 0;
+}
+
+/* Section de login à gauche */
+
+
+/* Section de bienvenue à droite */
+.welcome-section {
+  padding-left: 2rem;
+}
+
+.welcome-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem 0;
+}
+
+.benefits-list li {
+  font-size: 1rem;
+  color: #4a5568;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.benefits-list li::before {
+  content: "✓";
+  color: #28a745;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.info-box {
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  background-color: #f8f9fa;
+  border-left: 4px solid #007bff;
+}
+
+.info-text {
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.info-text:last-child {
+  margin-bottom: 0;
+}
+
+.info-text strong {
+  color: #2d3748;
+  font-weight: 600;
+}
+
+.enter-app-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: transparent;
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.enter-app-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+
+
+/* Responsive design */
+@media (max-width: 968px) {
+  .homepage-grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .welcome-section {
+    padding-left: 0;
+    order: 2;
+  }
+
+  .login-section {
+    order: 1;
+  }
+
+  .welcome-title {
+    font-size: 1.5rem;
+    text-align: center;
+  }
+
+  .benefits-list li {
+    justify-content: center;
+  }
+
+  .info-box {
+    text-align: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .homepage-grid {
+    padding: 2rem 0;
+  }
+
+  .login-section {
+    padding: 1.5rem;
+  }
+
+  .enter-app-link {
+    display: block;
+    text-align: center;
+  }
+}
