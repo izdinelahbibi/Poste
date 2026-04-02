@@ -517,7 +517,7 @@ button:disabled {
 .login-btn {
   flex: 2;
   padding: 12px;
-  background-color: #007bff;
+  background-color: #0b2a5b;
   color: white;
   border: none;
   border-radius: 4px;
@@ -525,24 +525,8 @@ button:disabled {
   font-size: 16px;
 }
 
-.login-btn:hover {
-  background-color: #0056b3;
-}
 
-.language-btn {
-  flex: 1;
-  padding: 12px;
-  background-color: #28a745;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
 
-.language-btn:hover {
-  background-color: #218838;
-}
 /* Header language button */
 .header-language {
   display: flex;

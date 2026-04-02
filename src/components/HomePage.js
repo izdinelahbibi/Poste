@@ -2,9 +2,12 @@ import React from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import LoginForm from './LoginForm';
+import { useLanguage } from '../hooks/useLanguage';
 import './HomePage.css';
 
 function HomePage() {
+  const { t } = useLanguage();
+
   return (
     <>
       <Header />
@@ -16,22 +19,22 @@ function HomePage() {
             </div>
 
             <div className="welcome-section">
-              <h2 className="welcome-title">Login to get a lot of benefits!</h2>
+              <h2 className="welcome-title">{t.homepage.welcomeTitle}</h2>
               <ul className="benefits-list">
-                <li>Easy access to consignments and their history</li>
-                <li>Automatically filled out forms</li>
-                <li>Simple archive of orders and services</li>
+                <li>{t.homepage.benefit1}</li>
+                <li>{t.homepage.benefit2}</li>
+                <li>{t.homepage.benefit3}</li>
               </ul>
               
               <div className="info-box">
                 <p className="info-text">
-                  <strong>Are you a Client Zone user?</strong> Just enter your ordinary login details to enter.
+                  <strong>{t.homepage.clientZone}:</strong> {t.homepage.clientZoneText}
                 </p>
                 <p className="info-text">
-                  <strong>Are you an eSIPO user?</strong> Use the following link to enter the application:
+                  <strong>{t.homepage.esipoUser}:</strong> {t.homepage.esipoText}
                 </p>
                 <a href="#" className="enter-app-link">
-                  Enter the application: Go to application.
+                  {t.homepage.enterApp}
                 </a>
               </div>
             </div>

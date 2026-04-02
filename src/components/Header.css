@@ -45,16 +45,39 @@
 .language-btn {
   padding: 8px 16px;
   margin-right: 10px;
-  background-color: #28a745;
-  color: white;
+
+  color: #0b2a5b;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: bold;
   transition: background-color 0.3s;
 }
 
-.language-btn:hover {
-  background-color: #218838;
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
 }
+
+.language-btn {
+
+  border: 0.5px solid #0b2a5b;
+  color: #0b2a5b;
+  padding: 10px 10px;
+  margin-left: 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+
+
+.language-btn:active {
+  transform: scale(0.95);
+}
+
+
