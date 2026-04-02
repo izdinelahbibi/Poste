@@ -14,7 +14,6 @@ function Header() {
 
        <div className="nav-right">
   <Link to="/login" className="nav-link btn btn-login">Log in</Link>
-  <Link to="/register" className="nav-link btn btn-register">Register</Link>
 </div>
 
       </div>

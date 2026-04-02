@@ -42,4 +42,19 @@
   border: 1px solid #0b2a5b;
   color: #0b2a5b;
 }
+.language-btn {
+  padding: 8px 16px;
+  margin-right: 10px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
 
+.language-btn:hover {
+  background-color: #218838;
+}
