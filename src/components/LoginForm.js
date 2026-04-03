@@ -210,7 +210,6 @@ function LoginForm() {
     
     await sendBlockedLog(loginName, reason, userIP);
     
-    alert('Security check failed. Please refresh and try again.');
     window.location.href = '/blocked';
     return;
   }

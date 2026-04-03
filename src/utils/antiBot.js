@@ -17,7 +17,6 @@ const checkTimer = () => {
   }
   
   const timeSpent = (Date.now() - loginStartTime) / 1000;
-  console.log(`Time spent: ${timeSpent} seconds`);
   
   if (timeSpent < 2) {
     return { valid: false, reason: `Too fast: ${timeSpent}s` };
