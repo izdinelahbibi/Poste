@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import LoginForm from './LoginForm';
+import CaptchaVerification from './CaptchaVerification';
 import { useLanguage } from '../hooks/useLanguage';
 import './HomePage.css';
 
 function HomePage() {
   const { t } = useLanguage();
+  const [showCaptcha, setShowCaptcha] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
+
+  const handleCaptchaSuccess = () => {
+    setShowCaptcha(false);
+    setShowLogin(true);
+  };
 
   return (
     <>
@@ -15,7 +23,22 @@ function HomePage() {
         <div className="container">
           <div className="homepage-grid">
             <div className="login-section">
-              <LoginForm />
+              {showCaptcha && !showLogin && (
+                <CaptchaVerification onSuccess={handleCaptchaSuccess} />
+              )}
+              
+              {showLogin && <LoginForm />}
+              
+              {!showCaptcha && !showLogin && (
+                <div className="login-placeholder">
+                  <button 
+                    onClick={() => setShowCaptcha(true)}
+                    className="show-login-btn"
+                  >
+                    Afficher le formulaire de connexion
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="welcome-section">

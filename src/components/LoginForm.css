@@ -712,3 +712,56 @@ button:disabled {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+.expiry-selects {
+  display: flex;
+  gap: 10px;
+}
+
+.expiry-selects select {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.expiry-selects select.input-error {
+  border-color: #dc3545;
+}
+
+.expiry-selects select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+.phone-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phone-code-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.phone-flag {
+  font-size: 1.2em;
+}
+
+.phone-code {
+  font-size: 1em;
+  color: #333;
+}
+
+.phone-input-wrapper input {
+  flex: 1;
+}
