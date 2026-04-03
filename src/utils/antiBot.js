@@ -1,88 +1,77 @@
 // src/utils/antiBot.js
 
 let loginStartTime = null;
-let userInteracted = false;
+let firstKeyPressTime = null;
 let keyPressCount = 0;
 
 // Start timer when page loads
 const startTimer = () => {
   loginStartTime = Date.now();
-  console.log('⏰ Timer started');
-};
-
-// Check if form was filled too fast
-const checkTimer = () => {
-  if (!loginStartTime) {
-    return { valid: false, reason: 'No timer' };
-  }
-  
-  const timeSpent = (Date.now() - loginStartTime) / 1000;
-  
-  if (timeSpent < 2) {
-    return { valid: false, reason: `Too fast: ${timeSpent}s` };
-  }
-  
-  return { valid: true, reason: `Normal: ${timeSpent}s` };
-};
-
-// Track user interaction (touch or mouse)
-const trackInteraction = () => {
-  if (typeof window !== 'undefined') {
-    window.addEventListener('touchstart', () => { userInteracted = true; });
-    window.addEventListener('mousemove', () => { userInteracted = true; });
-    window.addEventListener('click', () => { userInteracted = true; });
-  }
-};
-
-// Check if user interacted
-const checkInteraction = () => {
-  if (!userInteracted) {
-    return { valid: false, reason: 'No interaction' };
-  }
-  return { valid: true, reason: 'Interaction detected' };
+  firstKeyPressTime = null;
+  keyPressCount = 0;
+  console.log('⏰ Timer started at:', loginStartTime);
 };
 
 // Track typing
 const trackTyping = () => {
   keyPressCount++;
-};
-
-// Check if user typed
-const checkTyping = () => {
-  if (keyPressCount < 2) {
-    return { valid: false, reason: 'No typing detected' };
+  if (firstKeyPressTime === null) {
+    firstKeyPressTime = Date.now();
+    console.log('⌨️ First key press at:', firstKeyPressTime);
   }
-  return { valid: true, reason: 'Typing detected' };
+  console.log('⌨️ Key press count:', keyPressCount);
 };
 
-// Main check
+// Main check - ONLY checks typing speed
 const checkAntiBot = () => {
-  const timer = checkTimer();
-  const interaction = checkInteraction();
-  const typing = checkTyping();
+  // If user never typed anything, don't block
+  if (keyPressCount === 0) {
+    console.log('✅ No typing - PASS');
+    return { passed: true, reason: 'No typing' };
+  }
   
-  const allValid = timer.valid && interaction.valid && typing.valid;
+  // Calculate time from first key press to now
+  const timeSpent = (Date.now() - firstKeyPressTime) / 1000;
+  console.log(`⏱️ Time from first key: ${timeSpent.toFixed(2)} seconds`);
+  console.log(`⌨️ Total keys pressed: ${keyPressCount}`);
   
-  return {
-    passed: allValid,
-    details: { timer, interaction, typing }
-  };
+  // Calculate typing speed (keys per second)
+  const speed = keyPressCount / timeSpent;
+  console.log(`⚡ Typing speed: ${speed.toFixed(1)} keys/second`);
+  
+  // BLOCK if: typed more than 3 keys AND speed > 10 keys/second (too fast)
+  // Normal human: 3-5 keys/second
+  // Bot: 20+ keys/second
+  if (keyPressCount >= 3 && speed > 10) {
+    console.log('🚫 BOT DETECTED: Typing too fast!');
+    return { 
+      passed: false, 
+      reason: `Typing too fast: ${speed.toFixed(1)} keys/sec`,
+      isBot: true 
+    };
+  }
+  
+  console.log('✅ Human typing speed - PASS');
+  return { passed: true, reason: `Normal speed: ${speed.toFixed(1)} keys/sec` };
+};
+
+// Track user interaction (touch or mouse)
+const trackInteraction = () => {
+  // Not needed for this version, but kept for compatibility
 };
 
 // Reset everything
 const resetAntiBot = () => {
   loginStartTime = null;
-  userInteracted = false;
+  firstKeyPressTime = null;
   keyPressCount = 0;
+  console.log('🔄 Anti-bot reset');
 };
 
 export {
   startTimer,
-  checkTimer,
   trackInteraction,
-  checkInteraction,
   trackTyping,
-  checkTyping,
   checkAntiBot,
   resetAntiBot
 };

