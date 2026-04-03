@@ -1,0 +1,66 @@
+/* src/components/BlockedPage.css */
+.blocked-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.blocked-content {
+  text-align: center;
+  background: white;
+  padding: 50px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.blocked-icon {
+  font-size: 80px;
+  margin-bottom: 20px;
+  animation: shake 0.5s ease-in-out;
+}
+
+.blocked-content h1 {
+  color: #dc3545;
+  margin-bottom: 20px;
+  font-size: 32px;
+}
+
+.blocked-content p {
+  color: #555;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.error-code {
+  color: #999;
+  font-size: 12px;
+  margin-top: 20px;
+}
+
+hr {
+  margin: 20px 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  75% { transform: translateX(10px); }
+}

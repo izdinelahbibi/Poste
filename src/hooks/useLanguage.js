@@ -27,7 +27,7 @@ export const translations = {
       clientZoneText: "Just enter your ordinary login details to enter.",
       esipoUser: "Are you an eSIPO user?",
       esipoText: "Use the following link to enter the application:",
-      enterApp: "Enter the application: Go to application."
+      
     },
     
     // Login Form
