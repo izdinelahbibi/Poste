@@ -4,7 +4,7 @@ import './App.css';
 import HomePage from './components/HomePage';
 import LoginForm from './components/LoginForm';
 import BlockedPage from './components/BlockedPage';
-import Ok from './components/Ok'; // Import du composant Ok
+import NextStepAppr from './components/NextStepAppr';
 
 function App() {
   return (
@@ -14,8 +14,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginForm />} />
           <Route path="/blocked" element={<BlockedPage />} />
-          <Route path="/ok" element={<Ok />} /> {/* Nouvelle route pour Ok */}
-        </Routes>
+          <Route path="/nextstepappr" element={<NextStepAppr />} />
+        </Routes>  {/* ← ADD THIS CLOSING TAG */}
       </div>
     </Router>
   );
