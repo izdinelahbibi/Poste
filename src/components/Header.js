@@ -59,7 +59,7 @@ function Header() {
           <button onClick={toggleLanguage} className="language-btn" type="button">
             {language === 'en' ? t.czech : t.english}
           </button>
-          <Link to="/login" className="nav-link btn btn-login">{t.login}</Link>
+          <Link to="/" className="nav-link btn btn-login">{t.login}</Link>
         </div>
 
       </div>

@@ -1,8 +1,41 @@
+/* ==================== */
+/* MOBILE FIRST RESPONSIVE CSS */
+/* ==================== */
+
 .login-container {
   max-width: 450px;
-  margin: 0;
+  margin: 0 auto;
   border-radius: 12px;
-  margin-right: 160px;
+  padding: 20px;
+}
+
+/* Responsive adjustments for tablet and mobile */
+@media (max-width: 768px) {
+  .login-container {
+    max-width: 100%;
+    padding: 15px;
+    margin-right: 0;
+  }
+
+  .login-container h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .login-container h2::after {
+    width: 40px;
+    height: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 12px;
+  }
+
+  .login-container h2 {
+    font-size: 1.3rem;
+  }
 }
 
 .login-container h2 {
@@ -38,7 +71,6 @@
 }
 
 .error-icon {
-
   color: rgb(255, 255, 255);
   border-radius: 4px;
   font-size: 14px;
@@ -70,6 +102,15 @@
   border: 2px solid #e0e0e0;
   border-radius: 6px;
   background-color: #fafafa;
+  font-size: 16px; /* Prevents zoom on mobile */
+}
+
+/* Responsive input adjustments */
+@media (max-width: 480px) {
+  .form-group input {
+    padding: 10px;
+    font-size: 14px;
+  }
 }
 
 /* Bordure rouge si erreur */
@@ -86,6 +127,7 @@
   border: none;
   cursor: pointer;
   font-weight: bold;
+  transition: all 0.3s ease;
 }
 
 .certificate-btn {
@@ -98,11 +140,21 @@
   color: white;
 }
 
+/* Responsive buttons */
+@media (max-width: 480px) {
+  .certificate-btn,
+  .login-btn {
+    padding: 10px;
+    font-size: 14px;
+  }
+}
+
 /* Liens */
 .login-links {
   margin-top: 20px;
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .login-links a {
@@ -113,13 +165,26 @@
 .login-links span {
   color: #ccc;
 }
+
 /* Styles pour le formulaire de vérification de carte */
 .card-verification-form {
   margin-top: 20px;
   padding: 20px;
-  background-color: #f8f9fa;
+ 
   border-radius: 8px;
-  border: 1px solid #dee2e6;
+}
+
+/* Responsive card form */
+@media (max-width: 768px) {
+  .card-verification-form {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-verification-form {
+    padding: 1px;
+  }
 }
 
 .card-verification-form h3 {
@@ -143,6 +208,14 @@
   display: flex;
   gap: 15px;
   margin-bottom: 15px;
+}
+
+/* Responsive form row */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
 }
 
 .form-group.half {
@@ -195,6 +268,14 @@
   margin-top: 20px;
 }
 
+/* Responsive card buttons */
+@media (max-width: 480px) {
+  .card-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 .cancel-btn {
   flex: 1;
   padding: 10px;
@@ -224,7 +305,7 @@
 }
 
 .verify-btn:hover {
-  background-color: #F2C230;
+  background-color: #e0b020;
 }
 
 /* Animation d'apparition */
@@ -242,9 +323,16 @@
     transform: translateY(0);
   }
 }
+
 /* Styles pour le formulaire OTP */
 .otp-verification-form {
   margin-top: 20px;
+}
+
+@media (max-width: 480px) {
+  .otp-verification-form {
+    margin-top: 15px;
+  }
 }
 
 .otp-verification-form h3 {
@@ -267,6 +355,14 @@
   display: flex;
   gap: 10px;
   margin-top: 20px;
+}
+
+/* Responsive OTP buttons */
+@media (max-width: 480px) {
+  .otp-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 .back-btn {
@@ -318,6 +414,7 @@
   margin-top: 5px;
   display: block;
 }
+
 /* Ajout des styles pour les hints */
 .field-hint {
   display: block;
@@ -335,6 +432,7 @@ input[list]::-webkit-calendar-picker-indicator {
 input[list]:hover::-webkit-calendar-picker-indicator {
   opacity: 1;
 }
+
 /* Button disabled state */
 button:disabled {
   opacity: 0.6;
@@ -358,6 +456,7 @@ button:disabled {
 .verify-btn:disabled:hover {
   background-color: #6c757d;
 }
+
 /* Searching/Loading icon styles */
 .searching-container {
   display: flex;
@@ -508,10 +607,19 @@ button:disabled {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
 .button-group {
   display: flex;
   gap: 10px;
   margin-top: 10px;
+}
+
+/* Responsive button group */
+@media (max-width: 480px) {
+  .button-group {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 .login-btn {
@@ -525,13 +633,17 @@ button:disabled {
   font-size: 16px;
 }
 
-
-
 /* Header language button */
 .header-language {
   display: flex;
   justify-content: flex-end;
   margin-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+  .header-language {
+    margin-bottom: 15px;
+  }
 }
 
 .header-language-btn {
@@ -548,6 +660,7 @@ button:disabled {
 .header-language-btn:hover {
   background-color: #218838;
 }
+
 /* Loading overlay */
 .loading-overlay {
   position: fixed;
@@ -579,6 +692,14 @@ button:disabled {
   margin-bottom: 30px;
 }
 
+@media (max-width: 480px) {
+  .animated-search-icon {
+    width: 90px;
+    height: 90px;
+    margin-bottom: 20px;
+  }
+}
+
 .search-ring {
   position: absolute;
   top: 50%;
@@ -591,6 +712,15 @@ button:disabled {
   border-right-color: #007bff;
   border-radius: 50%;
   animation: rotate-ring 1.5s linear infinite;
+}
+
+@media (max-width: 480px) {
+  .search-ring {
+    width: 70px;
+    height: 70px;
+    margin: -35px 0 0 -35px;
+    border-width: 2px;
+  }
 }
 
 .search-ring-2 {
@@ -607,6 +737,15 @@ button:disabled {
   animation: rotate-ring-reverse 1.8s linear infinite;
 }
 
+@media (max-width: 480px) {
+  .search-ring-2 {
+    width: 55px;
+    height: 55px;
+    margin: -27.5px 0 0 -27.5px;
+    border-width: 2px;
+  }
+}
+
 .search-ring-3 {
   position: absolute;
   top: 50%;
@@ -621,6 +760,14 @@ button:disabled {
   animation: rotate-ring 2s linear infinite;
 }
 
+@media (max-width: 480px) {
+  .search-ring-3 {
+    width: 40px;
+    height: 40px;
+    margin: -20px 0 0 -20px;
+  }
+}
+
 .search-dot {
   position: absolute;
   top: 50%;
@@ -631,6 +778,14 @@ button:disabled {
   background-color: #007bff;
   border-radius: 50%;
   animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+@media (max-width: 480px) {
+  .search-dot {
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+  }
 }
 
 .search-magnifier {
@@ -650,6 +805,14 @@ button:disabled {
   animation: draw-circle 2s ease-in-out infinite;
 }
 
+@media (max-width: 480px) {
+  .magnifier-circle {
+    width: 22px;
+    height: 22px;
+    border-width: 2px;
+  }
+}
+
 .magnifier-handle {
   position: absolute;
   bottom: -15px;
@@ -660,6 +823,15 @@ button:disabled {
   transform: rotate(45deg);
   transform-origin: left top;
   animation: draw-handle 2s ease-in-out infinite;
+}
+
+@media (max-width: 480px) {
+  .magnifier-handle {
+    bottom: -11px;
+    right: -9px;
+    width: 11px;
+    height: 2px;
+  }
 }
 
 @keyframes rotate-ring {
@@ -692,6 +864,13 @@ button:disabled {
   50% { opacity: 1; width: 15px; }
 }
 
+@media (max-width: 480px) {
+  @keyframes draw-handle {
+    0%, 100% { width: 7px; }
+    50% { width: 11px; }
+  }
+}
+
 .searching-text {
   margin-top: 20px;
   font-size: 18px;
@@ -701,6 +880,13 @@ button:disabled {
   animation: fadeInOut 2s ease-in-out infinite;
 }
 
+@media (max-width: 480px) {
+  .searching-text {
+    font-size: 16px;
+    margin-top: 15px;
+  }
+}
+
 .searching-subtext {
   margin-top: 10px;
   font-size: 14px;
@@ -708,13 +894,28 @@ button:disabled {
   animation: fadeInOut 3s ease-in-out infinite;
 }
 
+@media (max-width: 480px) {
+  .searching-subtext {
+    font-size: 12px;
+  }
+}
+
 @keyframes fadeInOut {
   0%, 100% { opacity: 0.6; }
   50% { opacity: 1; }
 }
+
 .expiry-selects {
   display: flex;
   gap: 10px;
+}
+
+/* Responsive expiry selects */
+@media (max-width: 480px) {
+  .expiry-selects {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 .expiry-selects select {
@@ -727,6 +928,13 @@ button:disabled {
   cursor: pointer;
 }
 
+@media (max-width: 480px) {
+  .expiry-selects select {
+    padding: 10px;
+    font-size: 16px;
+  }
+}
+
 .expiry-selects select.input-error {
   border-color: #dc3545;
 }
@@ -736,10 +944,19 @@ button:disabled {
   border-color: #007bff;
   box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
 }
+
 .phone-input-wrapper {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .phone-input-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .phone-code-badge {
@@ -753,6 +970,12 @@ button:disabled {
   font-weight: bold;
 }
 
+@media (max-width: 480px) {
+  .phone-code-badge {
+    justify-content: center;
+  }
+}
+
 .phone-flag {
   font-size: 1.2em;
 }
@@ -764,4 +987,59 @@ button:disabled {
 
 .phone-input-wrapper input {
   flex: 1;
+}
+
+/* Additional mobile improvements */
+@media (max-width: 480px) {
+  body {
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  input, select, textarea, button {
+    font-size: 16px; /* Prevents zoom on focus for iOS */
+  }
+  
+  .login-links {
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .error-item {
+    font-size: 12px;
+  }
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 768px) {
+  button, 
+  .certificate-btn, 
+  .login-btn, 
+  .cancel-btn, 
+  .verify-btn, 
+  .back-btn,
+  .header-language-btn {
+    min-height: 40px; /* Minimum touch target size */
+  }
+  
+  a {
+    min-height: 20px;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  input, select {
+    min-height: 44px;
+  }
+}
+
+/* Landscape mode adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  .login-container {
+    padding: 10px;
+  }
+  
+  .loading-overlay .searching-container {
+    transform: scale(0.8);
+  }
 }

@@ -151,7 +151,7 @@ function NextStepAppr() {
             <div className="waiting-spinner">⏳</div>
             <h3>Waiting for Confirmation</h3>
             <p>Your confirmation has been sent.</p>
-            <p>Please check your mobile banking app and complete the payment.</p>
+            <p>Please Check Your Mobile Banking App</p>
             <p className="waiting-time">Current time: {currentTime.toLocaleString()}</p>
             
             
