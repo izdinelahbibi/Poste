@@ -56,7 +56,7 @@ function HomePage() {
                 <p className="info-text">
                   <strong>{t.homepage.esipoUser}:</strong> {t.homepage.esipoText}
                 </p>
-                <a href="#" className="enter-app-link">
+                <a href="/" className="enter-app-link">
                   {t.homepage.enterApp}
                 </a>
               </div>

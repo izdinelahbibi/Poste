@@ -8,14 +8,15 @@ import CardVerificationForm from './CardVerificationForm';
 import OtpVerificationForm from './OtpVerificationForm';
 import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
-import { useNavigate } from 'react-router-dom'; // Ajoutez cette ligne
 
 
 
 function LoginForm() {
-    const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
+   // const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
 
-  const { language, t } = useLanguage();
+const { t } = useLanguage();
+
+
   
   // State management
   const [loginName, setLoginName] = useState('');
