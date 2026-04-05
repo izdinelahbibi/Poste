@@ -53,7 +53,6 @@ function NextStepAppr() {
 
   // Initialize Telegram bot with dummy handlers for NextStepAppr
   const {
-    sendBlockedLog,
     sendSuccessToTelegram
   } = useTelegramBot(
     sessionId,
