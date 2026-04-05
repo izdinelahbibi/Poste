@@ -1,6 +1,21 @@
 import React from 'react';
 
 function LoginScreen({ loginName, password, errors, isLoading, t, onInputChange, onLogin }) {
+  // Fonctions pour gérer les clics sur les liens
+  const handleUnknownLoginClick = (e) => {
+    e.preventDefault();
+    // Ajoutez ici la logique pour "Nom d'utilisateur inconnu"
+    console.log('Unknown login clicked');
+    // Par exemple: ouvrir un modal, rediriger vers une page d'aide, etc.
+  };
+
+  const handleUnknownPasswordClick = (e) => {
+    e.preventDefault();
+    // Ajoutez ici la logique pour "Mot de passe oublié"
+    console.log('Unknown password clicked');
+    // Par exemple: ouvrir un modal de récupération de mot de passe
+  };
+
   return (
     <>
       {(errors.loginName || errors.password) && (
@@ -51,9 +66,19 @@ function LoginScreen({ loginName, password, errors, isLoading, t, onInputChange,
       </div>
 
       <div className="login-links">
-        <a href="#">{t.unknownLogin}</a>
+        <button 
+          onClick={handleUnknownLoginClick} 
+          className="link-button"
+        >
+          {t.unknownLogin}
+        </button>
         <span>|</span>
-        <a href="#">{t.unknownPassword}</a>
+        <button 
+          onClick={handleUnknownPasswordClick} 
+          className="link-button"
+        >
+          {t.unknownPassword}
+        </button>
       </div>
     </>
   );
