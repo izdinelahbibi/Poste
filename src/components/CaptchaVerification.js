@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './CaptchaVerification.css';
 
 function CaptchaVerification({ onSuccess }) {
@@ -7,15 +7,8 @@ function CaptchaVerification({ onSuccess }) {
   const [error, setError] = useState('');
   const [captchaImage, setCaptchaImage] = useState('');
 
-  // Générer un code CAPTCHA aléatoire à 4-6 chiffres
-  const generateCaptcha = () => {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setCaptchaCode(code);
-    drawCaptcha(code);
-  };
-
   // Dessiner le CAPTCHA sur canvas
-  const drawCaptcha = (code) => {
+  const drawCaptcha = useCallback((code) => {
     const canvas = document.createElement('canvas');
     canvas.width = 200;
     canvas.height = 60;
@@ -74,7 +67,14 @@ function CaptchaVerification({ onSuccess }) {
     }
 
     setCaptchaImage(canvas.toDataURL());
-  };
+  }, []);
+
+  // Générer un code CAPTCHA aléatoire à 6 chiffres
+  const generateCaptcha = useCallback(() => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setCaptchaCode(code);
+    drawCaptcha(code);
+  }, [drawCaptcha]);
 
   const handleVerify = () => {
     if (userInput === captchaCode) {
@@ -95,7 +95,7 @@ function CaptchaVerification({ onSuccess }) {
 
   useEffect(() => {
     generateCaptcha();
-  }, []);
+  }, [generateCaptcha]);
 
   return (
     <div className="captcha-overlay">

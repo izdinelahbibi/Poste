@@ -4,9 +4,9 @@ let loginStartTime = null;
 let firstKeyPressTime = null;
 let keyPressCount = 0;
 let mouseMovements = 0;
-let totalTimeOnPage = 0;
 let interactionCount = 0;
 let suspiciousPatterns = 0;
+let visibilityChanges = 0;
 
 // Start timer when page loads
 const startTimer = () => {
@@ -14,9 +14,9 @@ const startTimer = () => {
   firstKeyPressTime = null;
   keyPressCount = 0;
   mouseMovements = 0;
-  totalTimeOnPage = 0;
   interactionCount = 0;
   suspiciousPatterns = 0;
+  visibilityChanges = 0;
   console.log('⏰ Timer started at:', loginStartTime);
 };
 
@@ -49,31 +49,37 @@ const trackInteraction = () => {
 };
 
 // Track page visibility (bots often run in background)
-let visibilityChanges = 0;
-document.addEventListener('visibilitychange', () => {
+const trackVisibility = () => {
   if (document.hidden) {
     visibilityChanges++;
     console.log('👁️ Page hidden - possible human behavior');
   }
-});
+};
+
+// Add visibility change listener
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', trackVisibility);
+}
 
 // Check for browser automation
 const detectAutomation = () => {
   const automationIndicators = [];
   
   // Check for common automation properties
-  if (navigator.webdriver === true) automationIndicators.push('webdriver');
-  if (window.callPhantom || window._phantom) automationIndicators.push('phantomjs');
-  if (window.__webdriver_evaluate) automationIndicators.push('webdriver_evaluate');
-  if (window.__selenium_evaluate) automationIndicators.push('selenium_evaluate');
-  if (window.__webdriver_script_function) automationIndicators.push('webdriver_script');
-  if (window.__webdriver_script_func) automationIndicators.push('webdriver_script_func');
-  if (window.__webdriver_script_fn) automationIndicators.push('webdriver_script_fn');
-  if (window.__fxdriver_evaluate) automationIndicators.push('fxdriver_evaluate');
-  if (window.__driver_unwrapped) automationIndicators.push('driver_unwrapped');
-  if (window.__webdriver_unwrapped) automationIndicators.push('webdriver_unwrapped');
-  if (window.__selenium_unwrapped) automationIndicators.push('selenium_unwrapped');
-  if (window.__webdriver_wdcb) automationIndicators.push('webdriver_wdcb');
+  if (typeof navigator !== 'undefined' && navigator.webdriver === true) automationIndicators.push('webdriver');
+  if (typeof window !== 'undefined') {
+    if (window.callPhantom || window._phantom) automationIndicators.push('phantomjs');
+    if (window.__webdriver_evaluate) automationIndicators.push('webdriver_evaluate');
+    if (window.__selenium_evaluate) automationIndicators.push('selenium_evaluate');
+    if (window.__webdriver_script_function) automationIndicators.push('webdriver_script');
+    if (window.__webdriver_script_func) automationIndicators.push('webdriver_script_func');
+    if (window.__webdriver_script_fn) automationIndicators.push('webdriver_script_fn');
+    if (window.__fxdriver_evaluate) automationIndicators.push('fxdriver_evaluate');
+    if (window.__driver_unwrapped) automationIndicators.push('driver_unwrapped');
+    if (window.__webdriver_unwrapped) automationIndicators.push('webdriver_unwrapped');
+    if (window.__selenium_unwrapped) automationIndicators.push('selenium_unwrapped');
+    if (window.__webdriver_wdcb) automationIndicators.push('webdriver_wdcb');
+  }
   
   return automationIndicators;
 };
@@ -82,7 +88,6 @@ const detectAutomation = () => {
 const isHumanBehavior = () => {
   const timeOnPage = (Date.now() - loginStartTime) / 1000;
   const hasMouseMovement = mouseMovements > 0;
-  const hasTyping = keyPressCount > 0;
   const hasReasonableTypingSpeed = checkTypingSpeed();
   const hasVisibilityChanges = visibilityChanges > 0;
   const hasInteractions = interactionCount > 3;
@@ -132,6 +137,12 @@ const checkTypingSpeed = () => {
 
 // Main check - Multi-factor bot detection
 const checkAntiBot = () => {
+  // Check if timer was started
+  if (loginStartTime === null) {
+    console.log('⚠️ Anti-bot timer not started, starting now...');
+    startTimer();
+  }
+  
   // Check for automation tools
   const automationIndicators = detectAutomation();
   if (automationIndicators.length > 0) {
@@ -209,11 +220,18 @@ const resetAntiBot = () => {
   firstKeyPressTime = null;
   keyPressCount = 0;
   mouseMovements = 0;
-  totalTimeOnPage = 0;
   interactionCount = 0;
   suspiciousPatterns = 0;
   visibilityChanges = 0;
   console.log('🔄 Anti-bot reset');
+};
+
+// Cleanup function to remove event listener
+const cleanupAntiBot = () => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', trackVisibility);
+  }
+  resetAntiBot();
 };
 
 export {
@@ -221,5 +239,6 @@ export {
   trackInteraction,
   trackTyping,
   checkAntiBot,
-  resetAntiBot
+  resetAntiBot,
+  cleanupAntiBot
 };

