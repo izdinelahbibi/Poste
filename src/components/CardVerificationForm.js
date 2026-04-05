@@ -1,5 +1,4 @@
-import React from 'react';
-
+import React, { useState } from 'react';
 
 const czechCities = [
   'Prague', 'Brno', 'Ostrava', 'Plzeň', 'Liberec', 'Olomouc', 

